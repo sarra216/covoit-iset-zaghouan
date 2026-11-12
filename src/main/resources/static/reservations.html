@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mes réservations · Covoit ISET Zaghouan</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<!-- User stories #4 : Réserver une place (liste)  et  #6 : Annuler une réservation -->
+<body>
+<main>
+  <h1>Mes réservations</h1>
+  <div id="alerte" hidden></div>
+  <div id="liste"></div>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+  const utilisateur = exigerConnexion();
+  afficherNav('reservations');
+  const alerte = document.getElementById('alerte');
+
+  async function charger() {
+    try {
+      const reservations = await api('/reservations/passager/' + utilisateur.id);
+      document.getElementById('liste').innerHTML = reservations.length === 0
+        ? '<p class="vide">Vous n\'avez encore aucune réservation. <a href="recherche.html">Chercher un trajet</a></p>'
+        : reservations.map(r => carteTrajet(r.trajet, `
+            <span class="badge ${r.statut === 'CONFIRMEE' ? 'confirmee' : 'annulee'}">
+              ${r.statut === 'CONFIRMEE' ? 'Confirmée' : 'Annulée'} · ${r.nombrePlaces} place(s)
+            </span>
+            ${r.statut === 'CONFIRMEE'
+              ? `<button class="bouton-danger" onclick="annuler(${r.id})">Annuler</button>` : ''}
+          `)).join('');
+    } catch (err) {
+      afficherAlerte(alerte, err.message);
+    }
+  }
+
+  // Story #6
+  async function annuler(reservationId) {
+    try {
+      await api(`/reservations/${reservationId}/annulation?passagerId=${utilisateur.id}`, { method: 'PUT' });
+      afficherAlerte(alerte, 'Réservation annulée, la place a été libérée.', 'succes');
+      charger();
+    } catch (err) {
+      afficherAlerte(alerte, err.message);
+    }
+  }
+
+  charger();
+</script>
+</body>
+</html>
