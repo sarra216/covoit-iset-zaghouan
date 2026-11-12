@@ -1,0 +1,38 @@
+package tn.iset.covoit.controller;
+
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import tn.iset.covoit.dto.MessageRequest;
+import tn.iset.covoit.dto.MessageResponse;
+import tn.iset.covoit.service.MessageService;
+
+import java.util.List;
+
+/** User story #7 : Contacter le conducteur */
+@RestController
+@RequestMapping("/api/messages")
+public class MessageController {
+
+    private final MessageService messageService;
+
+    public MessageController(MessageService messageService) {
+        this.messageService = messageService;
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public MessageResponse envoyer(@Valid @RequestBody MessageRequest requete) {
+        return messageService.envoyer(requete);
+    }
+
+    @GetMapping("/conversation")
+    public List<MessageResponse> conversation(@RequestParam Long utilisateur1, @RequestParam Long utilisateur2) {
+        return messageService.conversation(utilisateur1, utilisateur2);
+    }
+
+    @GetMapping("/utilisateur/{id}")
+    public List<MessageResponse> messagesDe(@PathVariable Long id) {
+        return messageService.messagesDe(id);
+    }
+}

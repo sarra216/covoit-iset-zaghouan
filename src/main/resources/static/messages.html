@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Messages · Covoit ISET Zaghouan</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<!-- User story #7 : Contacter le conducteur -->
+<body>
+<main>
+  <h1>Messages</h1>
+  <div id="alerte" hidden></div>
+
+  <div class="messagerie">
+    <div class="carte contacts" id="contacts"></div>
+    <div class="carte">
+      <h2 id="titre-conversation" style="margin-top:0">Choisissez une conversation</h2>
+      <div class="fil" id="fil"></div>
+      <form id="form-message" hidden>
+        <div class="champ"><textarea id="contenu" maxlength="500" placeholder="Bonjour, où est le point de rendez-vous ?" required></textarea></div>
+        <button type="submit">Envoyer</button>
+      </form>
+    </div>
+  </div>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+  const utilisateur = exigerConnexion();
+  afficherNav('messages');
+  const alerte = document.getElementById('alerte');
+  // ?avec=ID ouvre directement la conversation (bouton « Contacter le conducteur »)
+  let interlocuteurId = Number(new URLSearchParams(window.location.search).get('avec')) || null;
+
+  async function chargerContacts() {
+    const messages = await api('/messages/utilisateur/' + utilisateur.id);
+    const contacts = new Map(); // id -> nom, du plus récent au plus ancien
+    for (const m of messages) {
+      const autreId = m.expediteurId === utilisateur.id ? m.destinataireId : m.expediteurId;
+      const autreNom = m.expediteurId === utilisateur.id ? m.destinataireNom : m.expediteurNom;
+      if (!contacts.has(autreId)) contacts.set(autreId, autreNom);
+    }
+    document.getElementById('contacts').innerHTML = contacts.size === 0
+      ? '<p class="vide">Aucune conversation.</p>'
+      : [...contacts].map(([id, nom]) =>
+          `<a href="?avec=${id}" class="${id === interlocuteurId ? 'actif' : ''}">${echapper(nom)}</a>`).join('');
+  }
+
+  async function chargerConversation() {
+    if (!interlocuteurId) return;
+    document.getElementById('form-message').hidden = false;
+    const messages = await api(`/messages/conversation?utilisateur1=${utilisateur.id}&utilisateur2=${interlocuteurId}`);
+    const nom = messages.length === 0 ? null
+      : (messages[0].expediteurId === interlocuteurId ? messages[0].expediteurNom : messages[0].destinataireNom);
+    document.getElementById('titre-conversation').textContent = nom ? 'Conversation avec ' + nom : 'Nouvelle conversation';
+    const fil = document.getElementById('fil');
+    fil.innerHTML = messages.length === 0
+      ? '<p class="vide">Écrivez votre premier message.</p>'
+      : messages.map(m => `
+          <div class="bulle ${m.expediteurId === utilisateur.id ? 'moi' : ''}">
+            ${echapper(m.contenu)}<small>${formaterDateHeure(m.dateEnvoi)}</small>
+          </div>`).join('');
+    fil.scrollTop = fil.scrollHeight;
+  }
+
+  document.getElementById('form-message').addEventListener('submit', async e => {
+    e.preventDefault();
+    try {
+      await api('/messages', {
+        method: 'POST',
+        body: {
+          expediteurId: utilisateur.id,
+          destinataireId: interlocuteurId,
+          contenu: document.getElementById('contenu').value
+        }
+      });
+      document.getElementById('contenu').value = '';
+      await chargerConversation();
+      await chargerContacts();
+    } catch (err) {
+      afficherAlerte(alerte, err.message);
+    }
+  });
+
+  chargerContacts().then(chargerConversation).catch(err => afficherAlerte(alerte, err.message));
+</script>
+</body>
+</html>

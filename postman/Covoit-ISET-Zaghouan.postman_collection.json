@@ -1,0 +1,703 @@
+{
+  "info": {
+    "name": "Covoit ISET Zaghouan",
+    "description": "Tests de l'API des sprints 1 et 2. Lancer les requêtes dans l'ordre : le conducteur a l'id 1, le passager l'id 2.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api"
+    },
+    {
+      "key": "date",
+      "value": "2026-12-01"
+    }
+  ],
+  "item": [
+    {
+      "name": "Sprint 1",
+      "item": [
+        {
+          "name": "#1 S'inscrire / Se connecter",
+          "item": [
+            {
+              "name": "Inscription conducteur",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/inscription",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "inscription"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nom\": \"Ben Ali\",\n  \"prenom\": \"Ahmed\",\n  \"email\": \"ahmed@iset.tn\",\n  \"motDePasse\": \"secret123\",\n  \"telephone\": \"22123456\",\n  \"role\": \"CONDUCTEUR\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Inscription passager",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/inscription",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "inscription"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nom\": \"Trabelsi\",\n  \"prenom\": \"Sarra\",\n  \"email\": \"sarra@iset.tn\",\n  \"motDePasse\": \"secret123\",\n  \"telephone\": \"55123456\",\n  \"role\": \"PASSAGER\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Connexion",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/connexion",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "connexion"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"sarra@iset.tn\",\n  \"motDePasse\": \"secret123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Connexion - mauvais mot de passe (401)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/connexion",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "connexion"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"sarra@iset.tn\",\n  \"motDePasse\": \"faux\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Inscription - email déjà utilisé (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/inscription",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "inscription"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nom\": \"Ben Ali\",\n  \"prenom\": \"Ahmed\",\n  \"email\": \"ahmed@iset.tn\",\n  \"motDePasse\": \"secret123\",\n  \"telephone\": \"22123456\",\n  \"role\": \"CONDUCTEUR\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "#26 Proposer un trajet",
+          "item": [
+            {
+              "name": "Proposer un trajet",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/trajets",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "trajets"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"conducteurId\": 1,\n  \"villeDepart\": \"Tunis\",\n  \"villeArrivee\": \"Zaghouan\",\n  \"dateDepart\": \"{{date}}\",\n  \"heureDepart\": \"07:30\",\n  \"places\": 3,\n  \"prix\": 5\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Proposer - un passager ne peut pas (403)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/trajets",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "trajets"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"conducteurId\": 2,\n  \"villeDepart\": \"Tunis\",\n  \"villeArrivee\": \"Zaghouan\",\n  \"dateDepart\": \"{{date}}\",\n  \"heureDepart\": \"07:30\",\n  \"places\": 3,\n  \"prix\": 5\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "#3 Chercher un trajet",
+          "item": [
+            {
+              "name": "Chercher Tunis → Zaghouan",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/trajets/recherche?depart=tunis&arrivee=zaghouan",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "trajets",
+                    "recherche"
+                  ],
+                  "query": [
+                    {
+                      "key": "depart",
+                      "value": "tunis"
+                    },
+                    {
+                      "key": "arrivee",
+                      "value": "zaghouan"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Chercher par date",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/trajets/recherche?date={{date}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "trajets",
+                    "recherche"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "{{date}}"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "#2 Profil du conducteur",
+          "item": [
+            {
+              "name": "Profil conducteur",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/conducteurs/1",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "conducteurs",
+                    "1"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sprint 2",
+      "item": [
+        {
+          "name": "#4 Réserver une place",
+          "item": [
+            {
+              "name": "Réserver 1 place",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/reservations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "reservations"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"trajetId\": 1,\n  \"passagerId\": 2,\n  \"nombrePlaces\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Réserver 2 fois (409)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/reservations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "reservations"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"trajetId\": 1,\n  \"passagerId\": 2,\n  \"nombrePlaces\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Réserver son propre trajet (400)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/reservations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "reservations"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"trajetId\": 1,\n  \"passagerId\": 1,\n  \"nombrePlaces\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Mes réservations",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/reservations/passager/2",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "reservations",
+                    "passager",
+                    "2"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "#7 Contacter le conducteur",
+          "item": [
+            {
+              "name": "Envoyer un message",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/messages",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "messages"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"expediteurId\": 2,\n  \"destinataireId\": 1,\n  \"trajetId\": 1,\n  \"contenu\": \"Bonjour, où est le point de rendez-vous ?\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Réponse du conducteur",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/messages",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "messages"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"expediteurId\": 1,\n  \"destinataireId\": 2,\n  \"trajetId\": 1,\n  \"contenu\": \"Devant la station de métro Bab Saadoun.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Conversation",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/messages/conversation?utilisateur1=1&utilisateur2=2",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "messages",
+                    "conversation"
+                  ],
+                  "query": [
+                    {
+                      "key": "utilisateur1",
+                      "value": "1"
+                    },
+                    {
+                      "key": "utilisateur2",
+                      "value": "2"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Messages d'un utilisateur",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/messages/utilisateur/2",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "messages",
+                    "utilisateur",
+                    "2"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "#6 Annuler une réservation",
+          "item": [
+            {
+              "name": "Annuler",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/reservations/1/annulation?passagerId=2",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "reservations",
+                    "1",
+                    "annulation"
+                  ],
+                  "query": [
+                    {
+                      "key": "passagerId",
+                      "value": "2"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Annuler 2 fois (409)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/reservations/1/annulation?passagerId=2",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "reservations",
+                    "1",
+                    "annulation"
+                  ],
+                  "query": [
+                    {
+                      "key": "passagerId",
+                      "value": "2"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Annuler la réservation d'un autre (403)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/reservations/1/annulation?passagerId=1",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "reservations",
+                    "1",
+                    "annulation"
+                  ],
+                  "query": [
+                    {
+                      "key": "passagerId",
+                      "value": "1"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "#11 Profil du passager",
+          "item": [
+            {
+              "name": "Profil passager",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/passagers/2",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "passagers",
+                    "2"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
