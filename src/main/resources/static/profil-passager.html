@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profil du passager · Covoit ISET Zaghouan</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<!-- User story #11 : Consulter le profil du passager -->
+<body>
+<main>
+  <div id="alerte" hidden></div>
+  <div id="profil"></div>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+  const utilisateur = exigerConnexion();
+  const id = Number(new URLSearchParams(window.location.search).get('id'));
+  afficherNav(id === utilisateur.id ? 'profil' : '');
+
+  async function charger() {
+    try {
+      const p = await api('/passagers/' + id);
+      const contacter = id !== utilisateur.id
+        ? `<a class="bouton" href="messages.html?avec=${p.id}">Envoyer un message</a>` : '';
+      document.getElementById('profil').innerHTML = `
+        <h1>${echapper(p.prenom)} ${echapper(p.nom)}</h1>
+        <div class="carte">
+          <p>Passager · membre depuis le ${formaterDate(p.membreDepuis)}</p>
+          <div class="stats">
+            <div class="stat"><strong>${p.reservationsConfirmees}</strong>réservation(s) confirmée(s)</div>
+            <div class="stat"><strong>${p.reservationsAnnulees}</strong>réservation(s) annulée(s)</div>
+          </div>
+          <p>${contacter}</p>
+        </div>`;
+    } catch (err) {
+      afficherAlerte(document.getElementById('alerte'), err.message);
+    }
+  }
+  charger();
+</script>
+</body>
+</html>
