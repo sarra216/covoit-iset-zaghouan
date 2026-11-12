@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proposer un trajet · Covoit ISET Zaghouan</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<!-- User story #26 : Proposer un trajet -->
+<body>
+<main>
+  <h1>Proposer un trajet</h1>
+  <div id="alerte" hidden></div>
+
+  <form id="form-trajet" class="carte">
+    <div class="ligne">
+      <div class="champ"><label for="depart">Ville de départ</label><input id="depart" placeholder="Tunis" required></div>
+      <div class="champ"><label for="arrivee">Ville d'arrivée</label><input id="arrivee" placeholder="ISET Zaghouan" required></div>
+    </div>
+    <div class="ligne">
+      <div class="champ"><label for="date">Date</label><input id="date" type="date" required></div>
+      <div class="champ"><label for="heure">Heure</label><input id="heure" type="time" required></div>
+      <div class="champ"><label for="places">Places</label><input id="places" type="number" min="1" max="8" value="3" required></div>
+      <div class="champ"><label for="prix">Prix par place (DT)</label><input id="prix" type="number" min="0" step="0.5" value="5" required></div>
+    </div>
+    <button type="submit">Publier le trajet</button>
+  </form>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+  const utilisateur = exigerConnexion();
+  afficherNav('proposer');
+  const alerte = document.getElementById('alerte');
+  document.getElementById('date').min = new Date().toISOString().slice(0, 10);
+
+  if (utilisateur && utilisateur.role !== 'CONDUCTEUR') {
+    document.getElementById('form-trajet').hidden = true;
+    afficherAlerte(alerte, 'Seuls les conducteurs peuvent proposer un trajet.');
+  }
+
+  document.getElementById('form-trajet').addEventListener('submit', async e => {
+    e.preventDefault();
+    try {
+      const trajet = await api('/trajets', {
+        method: 'POST',
+        body: {
+          conducteurId: utilisateur.id,
+          villeDepart: document.getElementById('depart').value,
+          villeArrivee: document.getElementById('arrivee').value,
+          dateDepart: document.getElementById('date').value,
+          heureDepart: document.getElementById('heure').value,
+          places: Number(document.getElementById('places').value),
+          prix: Number(document.getElementById('prix').value)
+        }
+      });
+      afficherAlerte(alerte, `Trajet ${trajet.villeDepart} → ${trajet.villeArrivee} publié !`, 'succes');
+      e.target.reset();
+    } catch (err) {
+      afficherAlerte(alerte, err.message);
+    }
+  });
+</script>
+</body>
+</html>
