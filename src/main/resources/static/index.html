@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connexion · Covoit ISET Zaghouan</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<!-- User story #1 : S'inscrire / Se connecter -->
+<body>
+<main style="max-width: 460px">
+  <h1>🚗 Covoit ISET Zaghouan</h1>
+
+  <div class="onglets">
+    <button id="onglet-connexion" class="actif" onclick="changerOnglet('connexion')">Se connecter</button>
+    <button id="onglet-inscription" onclick="changerOnglet('inscription')">S'inscrire</button>
+  </div>
+
+  <div id="alerte" hidden></div>
+
+  <form id="form-connexion" class="carte">
+    <div class="champ"><label for="c-email">Email</label><input id="c-email" type="email" required></div>
+    <div class="champ"><label for="c-mdp">Mot de passe</label><input id="c-mdp" type="password" required></div>
+    <button type="submit">Se connecter</button>
+  </form>
+
+  <form id="form-inscription" class="carte" hidden>
+    <div class="ligne">
+      <div class="champ"><label for="i-prenom">Prénom</label><input id="i-prenom" required></div>
+      <div class="champ"><label for="i-nom">Nom</label><input id="i-nom" required></div>
+    </div>
+    <div class="champ"><label for="i-email">Email</label><input id="i-email" type="email" required></div>
+    <div class="champ"><label for="i-tel">Téléphone</label><input id="i-tel" pattern="\d{8}" placeholder="8 chiffres" required></div>
+    <div class="champ"><label for="i-mdp">Mot de passe</label><input id="i-mdp" type="password" minlength="6" required></div>
+    <div class="champ">
+      <label for="i-role">Je suis</label>
+      <select id="i-role">
+        <option value="PASSAGER">Passager</option>
+        <option value="CONDUCTEUR">Conducteur</option>
+      </select>
+    </div>
+    <button type="submit">Créer mon compte</button>
+  </form>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+  const alerte = document.getElementById('alerte');
+
+  if (utilisateurConnecte()) window.location.href = 'recherche.html';
+
+  function changerOnglet(nom) {
+    document.getElementById('form-connexion').hidden = nom !== 'connexion';
+    document.getElementById('form-inscription').hidden = nom !== 'inscription';
+    document.getElementById('onglet-connexion').classList.toggle('actif', nom === 'connexion');
+    document.getElementById('onglet-inscription').classList.toggle('actif', nom === 'inscription');
+    alerte.hidden = true;
+  }
+
+  function ouvrirSession(utilisateur) {
+    localStorage.setItem('utilisateur', JSON.stringify(utilisateur));
+    window.location.href = 'recherche.html';
+  }
+
+  document.getElementById('form-connexion').addEventListener('submit', async e => {
+    e.preventDefault();
+    try {
+      ouvrirSession(await api('/auth/connexion', {
+        method: 'POST',
+        body: {
+          email: document.getElementById('c-email').value,
+          motDePasse: document.getElementById('c-mdp').value
+        }
+      }));
+    } catch (err) {
+      afficherAlerte(alerte, err.message);
+    }
+  });
+
+  document.getElementById('form-inscription').addEventListener('submit', async e => {
+    e.preventDefault();
+    try {
+      ouvrirSession(await api('/auth/inscription', {
+        method: 'POST',
+        body: {
+          prenom: document.getElementById('i-prenom').value,
+          nom: document.getElementById('i-nom').value,
+          email: document.getElementById('i-email').value,
+          telephone: document.getElementById('i-tel').value,
+          motDePasse: document.getElementById('i-mdp').value,
+          role: document.getElementById('i-role').value
+        }
+      }));
+    } catch (err) {
+      afficherAlerte(alerte, err.message);
+    }
+  });
+</script>
+</body>
+</html>

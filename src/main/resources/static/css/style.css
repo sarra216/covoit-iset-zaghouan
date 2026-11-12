@@ -1,0 +1,118 @@
+:root {
+  --bleu: #1f4e79;
+  --bleu-clair: #eaf1f8;
+  --vert: #1e7d4f;
+  --rouge: #b42318;
+  --gris: #667085;
+  --bordure: #d0d5dd;
+  --fond: #f6f8fa;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--fond);
+  color: #1d2939;
+  line-height: 1.5;
+}
+
+/* ---------- Barre de navigation ---------- */
+.nav {
+  background: var(--bleu);
+  color: #fff;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 18px;
+  padding: 12px 20px;
+}
+.nav .logo { font-weight: 700; margin-right: auto; }
+.nav a { color: #dbe7f3; text-decoration: none; font-size: 15px; }
+.nav a:hover, .nav a.actif { color: #fff; text-decoration: underline; }
+.nav button { background: none; border: 1px solid #9fb8d0; color: #fff; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
+
+/* ---------- Mise en page ---------- */
+main { max-width: 860px; margin: 24px auto; padding: 0 16px; }
+h1 { color: var(--bleu); font-size: 24px; margin: 0 0 16px; }
+h2 { color: var(--bleu); font-size: 18px; margin: 24px 0 10px; }
+
+.carte {
+  background: #fff;
+  border: 1px solid var(--bordure);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+
+/* ---------- Formulaires ---------- */
+form .ligne { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+input, select, textarea {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--bordure);
+  border-radius: 7px;
+  font: inherit;
+  background: #fff;
+}
+textarea { resize: vertical; min-height: 70px; }
+.champ { margin-bottom: 12px; }
+
+button, .bouton {
+  display: inline-block;
+  background: var(--bleu);
+  color: #fff;
+  border: none;
+  padding: 9px 16px;
+  border-radius: 7px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+button:hover, .bouton:hover { filter: brightness(1.12); }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.bouton-secondaire { background: #fff; color: var(--bleu); border: 1px solid var(--bleu); }
+.bouton-danger { background: var(--rouge); }
+
+/* ---------- Messages d'alerte ---------- */
+.alerte { padding: 10px 14px; border-radius: 7px; margin: 12px 0; font-size: 15px; }
+.alerte.erreur { background: #fef3f2; color: var(--rouge); border: 1px solid #fecdca; }
+.alerte.succes { background: #ecfdf3; color: var(--vert); border: 1px solid #abefc6; }
+
+/* ---------- Onglets (connexion / inscription) ---------- */
+.onglets { display: flex; gap: 8px; margin-bottom: 16px; }
+.onglets button { background: #fff; color: var(--bleu); border: 1px solid var(--bordure); }
+.onglets button.actif { background: var(--bleu); color: #fff; border-color: var(--bleu); }
+
+/* ---------- Trajets et réservations ---------- */
+.trajet { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 20px; align-items: center; }
+.trajet .itineraire { font-size: 18px; font-weight: 700; }
+.trajet .details { color: var(--gris); font-size: 14px; }
+.trajet .prix { font-size: 18px; font-weight: 700; color: var(--vert); }
+.trajet .actions { display: flex; gap: 8px; align-items: center; }
+.trajet .actions input { width: 70px; }
+
+.badge { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 13px; font-weight: 600; }
+.badge.confirmee { background: #ecfdf3; color: var(--vert); }
+.badge.annulee { background: #f2f4f7; color: var(--gris); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.stat { background: var(--bleu-clair); border-radius: 8px; padding: 12px; text-align: center; }
+.stat strong { display: block; font-size: 24px; color: var(--bleu); }
+.vide { color: var(--gris); font-style: italic; }
+
+/* ---------- Messagerie ---------- */
+.messagerie { display: grid; grid-template-columns: 220px 1fr; gap: 14px; }
+.contacts a { display: block; padding: 9px 10px; border-radius: 7px; color: inherit; text-decoration: none; }
+.contacts a.actif, .contacts a:hover { background: var(--bleu-clair); }
+.fil { max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.bulle { max-width: 75%; padding: 8px 12px; border-radius: 12px; background: #f2f4f7; }
+.bulle.moi { align-self: flex-end; background: var(--bleu); color: #fff; }
+.bulle small { display: block; font-size: 11px; opacity: .7; margin-top: 2px; }
+
+@media (max-width: 640px) {
+  .messagerie { grid-template-columns: 1fr; }
+}
