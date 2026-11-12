@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chercher un trajet · Covoit ISET Zaghouan</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<!-- User story #3 : Chercher un trajet  (+ bouton Réserver de la story #4) -->
+<body>
+<main>
+  <h1>Chercher un trajet</h1>
+
+  <form id="form-recherche" class="carte">
+    <div class="ligne">
+      <div class="champ"><label for="depart">Départ</label><input id="depart" placeholder="Tunis"></div>
+      <div class="champ"><label for="arrivee">Arrivée</label><input id="arrivee" placeholder="Zaghouan"></div>
+      <div class="champ"><label for="date">Date</label><input id="date" type="date"></div>
+    </div>
+    <button type="submit">Rechercher</button>
+  </form>
+
+  <div id="alerte" hidden></div>
+  <div id="resultats"></div>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+  const utilisateur = exigerConnexion();
+  afficherNav('recherche');
+  const alerte = document.getElementById('alerte');
+  const resultats = document.getElementById('resultats');
+
+  async function rechercher() {
+    const params = new URLSearchParams();
+    for (const champ of ['depart', 'arrivee', 'date']) {
+      const valeur = document.getElementById(champ).value.trim();
+      if (valeur) params.append(champ, valeur);
+    }
+    try {
+      const trajets = await api('/trajets/recherche?' + params);
+      resultats.innerHTML = `<h2>${trajets.length} trajet(s) trouvé(s)</h2>` +
+        (trajets.length === 0
+          ? '<p class="vide">Aucun trajet ne correspond à votre recherche.</p>'
+          : trajets.map(t => carteTrajet(t, boutonReserver(t))).join(''));
+    } catch (err) {
+      afficherAlerte(alerte, err.message);
+    }
+  }
+
+  // Story #4 : un passager ne peut pas réserver son propre trajet
+  function boutonReserver(t) {
+    if (t.conducteurId === utilisateur.id) return '<span class="badge annulee">Mon trajet</span>';
+    return `<input type="number" id="places-${t.id}" min="1" max="${t.placesDisponibles}" value="1">
+            <button onclick="reserver(${t.id})">Réserver</button>`;
+  }
+
+  async function reserver(trajetId) {
+    try {
+      await api('/reservations', {
+        method: 'POST',
+        body: {
+          trajetId: trajetId,
+          passagerId: utilisateur.id,
+          nombrePlaces: Number(document.getElementById('places-' + trajetId).value)
+        }
+      });
+      afficherAlerte(alerte, 'Réservation confirmée ! Retrouvez-la dans « Mes réservations ».', 'succes');
+      rechercher();
+    } catch (err) {
+      afficherAlerte(alerte, err.message);
+    }
+  }
+
+  document.getElementById('form-recherche').addEventListener('submit', e => {
+    e.preventDefault();
+    alerte.hidden = true;
+    rechercher();
+  });
+
+  rechercher(); // affiche tous les trajets à venir au chargement
+</script>
+</body>
+</html>
