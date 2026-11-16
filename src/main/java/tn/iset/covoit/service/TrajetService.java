@@ -2,6 +2,7 @@ package tn.iset.covoit.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tn.iset.covoit.dto.RoutePopulaire;
 import tn.iset.covoit.dto.TrajetRequest;
 import tn.iset.covoit.dto.TrajetResponse;
 import tn.iset.covoit.entity.Role;
@@ -35,6 +36,10 @@ public class TrajetService {
         if (conducteur.getRole() != Role.CONDUCTEUR) {
             throw ApiException.interdit("Seul un conducteur peut proposer un trajet");
         }
+        if (!conducteur.aVehicule()) {
+            throw ApiException.requeteInvalide(
+                    "Veuillez enregistrer les détails de votre véhicule avant de proposer un trajet");
+        }
         if (requete.villeDepart().trim().equalsIgnoreCase(requete.villeArrivee().trim())) {
             throw ApiException.requeteInvalide("Le départ et l'arrivée doivent être différents");
         }
@@ -48,6 +53,11 @@ public class TrajetService {
         trajet.setPlacesTotales(requete.places());
         trajet.setPlacesDisponibles(requete.places());
         trajet.setPrix(requete.prix());
+        if (requete.lieuDepart() != null && !requete.lieuDepart().isBlank()) {
+            trajet.setLieuDepart(requete.lieuDepart().trim());
+        }
+        trajet.setLatitude(requete.latitude());
+        trajet.setLongitude(requete.longitude());
 
         if (trajet.estPasse()) {
             throw ApiException.requeteInvalide("L'heure de départ est déjà passée");
@@ -67,5 +77,19 @@ public class TrajetService {
                 .filter(t -> !t.estPasse()) // retire les trajets d'aujourd'hui déjà partis
                 .map(TrajetResponse::from)
                 .toList();
+    }
+
+    /** Détail d'un trajet (page « Détails du trajet »). */
+    @Transactional(readOnly = true)
+    public TrajetResponse detail(Long id) {
+        return trajetRepository.findById(id)
+                .map(TrajetResponse::from)
+                .orElseThrow(() -> ApiException.introuvable("Trajet introuvable"));
+    }
+
+    /** Les 5 itinéraires les plus proposés (accueil, « Trajets populaires »). */
+    @Transactional(readOnly = true)
+    public List<RoutePopulaire> routesPopulaires() {
+        return trajetRepository.routesPopulaires(LocalDate.now()).stream().limit(5).toList();
     }
 }

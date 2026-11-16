@@ -2,5 +2,7 @@ package tn.iset.covoit.entity;
 
 public enum Role {
     CONDUCTEUR,
-    PASSAGER
+    PASSAGER,
+    /** Modération : utilisateurs, signalements, statistiques. */
+    ADMIN
 }

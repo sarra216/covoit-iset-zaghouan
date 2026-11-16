@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
+  <title>Détails du trajet · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<!-- User stories #4 Réserver une place et #7 Contacter le conducteur -->
+<body>
+<main class="conteneur">
+  <div id="retour"></div>
+  <div id="contenu"><div class="bloc"><div class="chargement"></div><div class="chargement"></div><div class="chargement"></div></div></div>
+</main>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="js/api.js"></script>
+<script>
+  const u = exigerConnexion();
+  afficherNav('recherche');
+  const id = Number(parametre('id'));
+  const $ = x => document.getElementById(x);
+  $('retour').innerHTML = lienRetour('Retour aux trajets', 'recherche.html');
+  let trajet, places = 1, maReservation = null;
+
+  async function charger() {
+    try {
+      const [t, mesReservations] = await Promise.all([
+        api('/trajets/' + id),
+        api('/reservations/passager/' + u.id).catch(() => [])
+      ]);
+      trajet = t;
+      // Une demande en cours (en attente ou confirmée) pour ce trajet ?
+      maReservation = mesReservations.find(r => r.trajet.id === id && (r.statut === 'EN_ATTENTE' || r.statut === 'CONFIRMEE')) || null;
+      afficher();
+    } catch (err) {
+      $('contenu').innerHTML = `<div class="bloc">${etatVide('alerte', 'Ce trajet n\'existe pas ou plus', echapper(err.message),
+        '<a class="btn" href="recherche.html">Chercher un trajet</a>')}</div>`;
+    }
+  }
+
+  function afficher() {
+    const t = trajet;
+    const monTrajet = t.conducteurId === u.id;
+    const parti = estPasse(t);
+    const reservees = t.placesTotales - t.placesDisponibles;
+    const voiture = [t.voitureModele, t.voitureCouleur].filter(Boolean).map(echapper).join(', ');
+    $('contenu').innerHTML = `
+      <h1 class="titre">${echapper(ville(t.villeDepart))} → ${echapper(ville(t.villeArrivee))}</h1>
+      <p class="chapeau">Départ ${formaterDate(t.dateDepart)} à ${formaterHeure(t.heureDepart)}</p>
+      ${t.annule ? `<div class="alerte">${ic('alerte')}<div><strong>Ce trajet a été annulé par le conducteur</strong>
+        Les réservations ont été fermées et les passagers prévenus.</div></div>` : ''}
+      <div class="colonnes large-droite">
+        <section>
+          <div class="bloc rembourre">
+            <div class="chrono">
+              <div class="h">${formaterHeure(t.heureDepart)}</div>
+              <div class="rail"><span class="pt"></span><span class="tr"></span></div>
+              <div><div class="v">${echapper(ville(t.villeDepart))}</div>
+                <div class="l">${t.lieuDepart ? echapper(t.lieuDepart) : 'Point de départ à convenir avec le conducteur'}</div></div>
+              <div></div>
+              <div class="rail"><span class="pt fin"></span></div>
+              <div><div class="v">${echapper(ville(t.villeArrivee))}</div></div>
+            </div>
+          </div>
+          ${t.latitude ? '<div class="carte-geo" id="carte" style="margin-top:16px"></div>' : ''}
+
+          <h2 class="section">Conducteur</h2>
+          <a class="bloc rembourre" style="display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit" href="profil-conducteur.html?id=${t.conducteurId}">
+            ${avatar(t.conducteurNom, 'm')}
+            <div style="flex:1"><strong style="font-size:17px">${echapper(t.conducteurNom)}</strong>
+              <div style="color:var(--asphalte)">${voiture || 'Voir son profil'}</div>
+              ${t.nombreAvis ? `<div style="margin-top:4px">${etoiles(t.noteConducteur)} <strong>${noteTexte(t.noteConducteur)}</strong>
+                <span style="color:var(--asphalte);font-size:14px">(${t.nombreAvis} avis)</span></div>` : ''}</div>
+            ${ic('droite')}
+          </a>
+
+          ${monTrajet ? `<h2 class="section">Passagers</h2><div class="bloc liste" id="passagers">${chargement(1)}</div>` : ''}
+        </section>
+
+        <aside class="colle">
+          <div class="bloc rembourre reservation-bloc" id="reservation"></div>
+        </aside>
+      </div>`;
+
+    if (t.latitude && carteDisponible()) {
+      const carte = creerCarte('carte', [t.latitude, t.longitude], 15, { scrollWheelZoom: false });
+      marqueur(carte, [t.latitude, t.longitude]);
+    }
+
+    const r = $('reservation');
+    const infos = `
+      <div class="prix-grand">${formaterPrix(t.prix)}</div><div class="sous">par place, à régler au conducteur</div>
+      <div style="margin-top:16px">
+        <div class="donnee"><span>Places libres</span><strong>${t.placesDisponibles} sur ${t.placesTotales}</strong></div>
+        <div class="donnee"><span>Date</span><strong>${formaterDate(t.dateDepart)}</strong></div>
+      </div>`;
+    if (monTrajet) {
+      r.innerHTML = infos + `<div class="donnee"><span>Réservées</span><strong>${reservees}</strong></div>
+        ${t.annule ? '<p class="aide">Vous avez annulé ce trajet.</p>'
+          : `<p class="aide">C'est votre trajet. Acceptez ou refusez les demandes dans la liste des passagers.</p>
+             ${parti ? '' : `<button class="btn danger plein" id="annuler-trajet" style="margin-top:12px">${ic('croix')} Annuler ce trajet</button>`}`}`;
+      if ($('annuler-trajet')) $('annuler-trajet').onclick = annulerTrajet;
+      chargerPassagers();
+    } else if (t.annule) {
+      r.innerHTML = infos + '<button class="btn plein grand" disabled>Trajet annulé</button>'
+        + '<a class="btn contour plein" style="margin-top:10px" href="recherche.html">Chercher un autre trajet</a>';
+    } else if (maReservation) {
+      const enAttente = maReservation.statut === 'EN_ATTENTE';
+      r.innerHTML = infos + `
+        <div class="alerte" style="margin:16px 0 0">${ic(enAttente ? 'horloge' : 'ok')}<div>
+          <strong>${enAttente ? 'Demande envoyée' : 'Place confirmée'}</strong>
+          ${maReservation.nombrePlaces} place${maReservation.nombrePlaces > 1 ? 's' : ''}. ${enAttente
+            ? 'Le conducteur doit accepter votre demande ; vous recevrez une notification.'
+            : 'Le conducteur a accepté. Rendez-vous au point de départ.'}</div></div>
+        <a class="btn contour plein" style="margin-top:12px" href="reservations.html">Voir mes trajets</a>
+        <a class="btn contour plein" style="margin-top:10px" href="messages.html?avec=${t.conducteurId}">${ic('message')} Écrire au conducteur</a>`;
+    } else if (parti) {
+      r.innerHTML = infos + '<button class="btn plein grand" disabled>Ce trajet est déjà parti</button>';
+    } else if (t.placesDisponibles === 0) {
+      r.innerHTML = infos + `<button class="btn plein grand" disabled>Complet</button>
+        <a class="btn contour plein" style="margin-top:10px" href="messages.html?avec=${t.conducteurId}">${ic('message')} Écrire au conducteur</a>`;
+    } else {
+      places = Math.min(places, t.placesDisponibles);
+      r.innerHTML = infos + `
+        <label class="etiquette" style="margin-top:14px">Nombre de places</label>
+        <div class="compteur"><button id="moins" aria-label="Une place de moins">${ic('moins')}</button>
+          <output id="nb" aria-live="polite">${places}</output>
+          <button id="plus" aria-label="Une place de plus">${ic('plus')}</button></div>
+        <div class="etapes-demande">${ic('bouclier')}<span>Le conducteur valide chaque demande. Votre place est bloquée en attendant sa réponse (12 h au plus).</span></div>
+        <div class="action-mobile" style="margin-top:14px"><button class="btn plein grand" id="reserver"></button></div>
+        <a class="btn contour plein" style="margin-top:10px" href="messages.html?avec=${t.conducteurId}">${ic('message')} Écrire au conducteur</a>`;
+      brancherReservation();
+    }
+  }
+
+  function brancherReservation() {
+    const maj = () => {
+      $('nb').textContent = places;
+      $('moins').disabled = places <= 1;
+      $('plus').disabled = places >= trajet.placesDisponibles;
+      $('reserver').textContent = `Demander ${places} place${places > 1 ? 's' : ''} · ${formaterPrix(places * trajet.prix)}`;
+    };
+    $('moins').onclick = () => { places--; maj(); };
+    $('plus').onclick = () => { places++; maj(); };
+    maj();
+    $('reserver').onclick = async () => {
+      const ok = await confirmer('Envoyer la demande ?',
+        `${places} place${places > 1 ? 's' : ''} de ${echapper(ville(trajet.villeDepart))} à ${echapper(ville(trajet.villeArrivee))}, ${formaterDate(trajet.dateDepart)} à ${formaterHeure(trajet.heureDepart)}. ${echapper(trajet.conducteurNom)} recevra votre demande et pourra l'accepter ou la refuser. Si elle est acceptée, vous réglerez ${formaterPrix(places * trajet.prix)} au conducteur.`,
+        'Envoyer la demande');
+      if (!ok) return;
+      try {
+        await api('/reservations', { method: 'POST', body: { trajetId: trajet.id, passagerId: u.id, nombrePlaces: places } });
+        toast('Demande envoyée. Vous serez notifié de la réponse.');
+        await charger();
+      } catch (err) { toast(err.message, 'erreur'); }
+    };
+  }
+
+  async function chargerPassagers() {
+    try {
+      const passagers = await api(`/trajets/${id}/passagers?conducteurId=${u.id}`);
+      listePassagers = passagers;
+      const parti = estPasse(trajet);
+      $('passagers').innerHTML = passagers.length ? passagers.map(p => `
+        <div class="demande">
+          ${avatar(p.passagerNom)}
+          <a class="qui" href="profil-passager.html?id=${p.passagerId}"><strong>${echapper(p.passagerNom)}</strong>
+            <span>${p.nombrePlaces} place${p.nombrePlaces > 1 ? 's' : ''} · ${p.statut === 'EN_ATTENTE' ? 'demande en attente' : 'confirmé'}</span></a>
+          <div class="actions">
+            ${p.statut === 'EN_ATTENTE' && !parti ? `
+              <button class="btn danger petit" onclick="decider(${p.reservationId}, false)">${ic('croix')} Refuser</button>
+              <button class="btn vert petit" onclick="decider(${p.reservationId}, true)">${ic('ok')} Accepter</button>`
+              : `<a class="btn contour petit" href="messages.html?avec=${p.passagerId}">${ic('message')} Écrire</a>`}
+          </div>
+        </div>`).join('')
+        : etatVide('utilisateurs', 'Pas encore de passager', 'Les demandes de réservation s\'afficheront ici.');
+    } catch (err) { $('passagers').innerHTML = etatVide('alerte', 'Les passagers n\'ont pas pu être chargés', echapper(err.message)); }
+  }
+
+  // Le conducteur accepte ou refuse une demande
+  async function annulerTrajet() {
+    const n = listePassagers.length;
+    const ok = await confirmer('Annuler ce trajet ?',
+      n ? `${n} passager${n > 1 ? 's' : ''} (demandes comprises) ${n > 1 ? 'seront prévenus' : 'sera prévenu'} et devr${n > 1 ? 'ont' : 'a'} trouver un autre trajet. Cette action est définitive.`
+        : 'Le trajet ne sera plus proposé dans les recherches. Cette action est définitive.',
+      'Annuler le trajet', true);
+    if (!ok) return;
+    try {
+      await api(`/trajets/${id}/annulation?conducteurId=${u.id}`, { method: 'PUT' });
+      toast('Trajet annulé. Les passagers ont été prévenus.');
+      charger();
+    } catch (err) { toast(err.message, 'erreur'); }
+  }
+
+  let listePassagers = [];
+  async function decider(reservationId, accepter) {
+    const nom = echapper((listePassagers.find(p => p.reservationId === reservationId) || {}).passagerNom || 'Le passager');
+    if (!accepter && !(await confirmer('Refuser cette demande ?', `${nom} sera prévenu et les places seront remises en ligne.`, 'Refuser', true))) return;
+    try {
+      await api(`/reservations/${reservationId}/${accepter ? 'acceptation' : 'refus'}?conducteurId=${u.id}`, { method: 'PUT' });
+      toast(accepter ? 'Demande acceptée. Le passager est prévenu.' : 'Demande refusée');
+      charger();
+    } catch (err) { toast(err.message, 'erreur'); }
+  }
+
+  charger();
+</script>
+</body>
+</html>

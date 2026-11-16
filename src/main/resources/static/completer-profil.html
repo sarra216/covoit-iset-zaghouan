@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
+  <title>Compléter le profil · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<!-- Compléter le profil : mode conducteur et véhicule -->
+<body>
+<main class="conteneur">
+  <div class="etroit">
+    <div id="retour"></div>
+    <h1 class="titre" id="titre">Compléter le profil</h1>
+    <p class="chapeau">Ces informations permettent aux autres étudiants de vous reconnaître le jour du trajet.</p>
+
+    <form id="form-profil">
+      <div class="bloc rembourre">
+        <h2 class="bloc-titre">Vous</h2>
+        <div class="deux empile">
+          <div class="champ"><label for="prenom">Prénom</label><div class="entree"><input id="prenom" required autocomplete="given-name"></div></div>
+          <div class="champ"><label for="nom">Nom</label><div class="entree"><input id="nom" required autocomplete="family-name"></div></div>
+        </div>
+        <div class="champ" style="margin-bottom:0"><label for="tel">Téléphone</label>
+          <div class="entree"><span class="prefixe"><span class="drapeau" aria-hidden="true"></span>+216</span>
+            <input id="tel" inputmode="numeric" pattern="\d{8}" maxlength="8" required autocomplete="tel-national"></div></div>
+      </div>
+
+      <div class="bloc rembourre">
+        <label class="option" id="bloc-conducteur">
+          <span class="texte"><strong>Je propose aussi des trajets</strong><span>Activez le mode conducteur pour publier vos trajets vers l'institut.</span></span>
+          <span class="interrupteur"><input type="checkbox" id="conducteur" aria-label="Mode conducteur"><span></span></span>
+        </label>
+
+        <div id="vehicule" hidden>
+          <h2 class="bloc-titre" style="margin-top:22px">Votre voiture</h2>
+          <div class="deux empile">
+            <div class="champ"><label for="modele">Modèle</label><div class="entree"><input id="modele" placeholder="Symbol, Polo, Clio…"></div></div>
+            <div class="champ"><label for="couleur">Couleur</label><div class="entree"><input id="couleur" placeholder="Blanc, gris…"></div></div>
+          </div>
+          <label class="etiquette" for="serie">Matricule</label>
+          <div class="plaque" id="plaque-tn" dir="ltr">
+            <input id="serie" inputmode="numeric" maxlength="3" placeholder="123" aria-label="Série (3 chiffres)">
+            <span class="tounes">تونس</span>
+            <input id="numero" inputmode="numeric" maxlength="4" placeholder="4567" aria-label="Numéro (4 chiffres)">
+          </div>
+          <div class="entree" id="plaque-etrangere" hidden><input id="matricule-libre" placeholder="RS 123456" aria-label="Matricule étrangère"></div>
+          <label class="case"><input type="checkbox" id="etrangere"> Plaque étrangère ou RS</label>
+        </div>
+      </div>
+
+      <div class="action-mobile"><button class="btn grand plein" type="submit">Enregistrer le profil</button></div>
+    </form>
+  </div>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+  const u = exigerConnexion();
+  afficherNav('profil');
+  const $ = id => document.getElementById(id);
+  if (!parametre('nouveau')) $('retour').innerHTML = lienRetour('Retour', 'profil.html');
+  if (parametre('nouveau')) $('titre').textContent = `Bienvenue ${u.prenom} !`;
+
+  $('prenom').value = u.prenom || '';
+  $('nom').value = u.nom || '';
+  $('tel').value = u.telephone || '';
+  $('modele').value = u.voitureModele || '';
+  $('couleur').value = u.voitureCouleur || '';
+  const plaque = (u.matricule || '').match(/^(\d{1,3}) تونس (\d{1,4})$/);
+  if (plaque) { $('serie').value = plaque[1]; $('numero').value = plaque[2]; }
+  else if (u.matricule) { $('etrangere').checked = true; $('matricule-libre').value = u.matricule; }
+
+  function majAffichage() {
+    const actif = $('conducteur').checked;
+    $('bloc-conducteur').classList.toggle('actif', actif);
+    $('vehicule').hidden = !actif;
+    $('plaque-tn').hidden = $('etrangere').checked;
+    $('plaque-etrangere').hidden = !$('etrangere').checked;
+  }
+  $('conducteur').checked = estConducteur(u) || parametre('suite') === 'proposer';
+  $('conducteur').addEventListener('change', majAffichage);
+  $('etrangere').addEventListener('change', majAffichage);
+  ['serie', 'numero'].forEach(id => $(id).addEventListener('input', e => e.target.value = e.target.value.replace(/\D/g, '')));
+  majAffichage();
+  if (parametre('suite') === 'proposer' && !aVehicule(u)) {
+    toast('Enregistrez votre voiture pour pouvoir proposer un trajet.', 'erreur');
+  }
+
+  $('form-profil').addEventListener('submit', async e => {
+    e.preventDefault();
+    const conducteur = $('conducteur').checked;
+    const matricule = $('etrangere').checked
+      ? $('matricule-libre').value.trim()
+      : ($('serie').value && $('numero').value ? `${$('serie').value} تونس ${$('numero').value}` : '');
+    try {
+      const maj = await api(`/utilisateurs/${u.id}/profil`, { method: 'PUT', body: {
+        prenom: $('prenom').value, nom: $('nom').value, telephone: $('tel').value.replace(/\s/g, ''),
+        conducteur, voitureModele: $('modele').value, voitureCouleur: $('couleur').value, matricule } });
+      enregistrerUtilisateur(maj);
+      toast('Profil enregistré');
+      setTimeout(() => location.href = parametre('suite') === 'proposer' && conducteur ? 'proposer.html' : 'recherche.html', 600);
+    } catch (err) { toast(err.message, 'erreur'); }
+  });
+</script>
+</body>
+</html>

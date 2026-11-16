@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -19,6 +20,9 @@ public record TrajetRequest(
         @NotNull(message = "L'heure est obligatoire") LocalTime heureDepart,
         @Min(value = 1, message = "Il faut au moins 1 place")
         @Max(value = 8, message = "8 places maximum") int places,
-        @PositiveOrZero(message = "Le prix ne peut pas être négatif") double prix
+        @PositiveOrZero(message = "Le prix ne peut pas être négatif") double prix,
+        @Size(max = 200, message = "Lieu de rendez-vous trop long") String lieuDepart,
+        Double latitude,
+        Double longitude
 ) {
 }

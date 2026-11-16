@@ -1,0 +1,71 @@
+# Pipeline GitLab CI/CD de Covoit ISET Zaghouan
+#
+#   test  → à chaque push (toutes les branches, donc aussi les Merge Requests) : tests unitaires Maven
+#   build → seulement sur main : construit l'image Docker, étiquetée avec le commit
+#   push  → seulement sur main : pousse l'image dans le registre (Harbor ou registre local)
+#
+# Les jobs tournent sur le GitLab Runner local (Shell executor) enregistré avec le tag « local ».
+# Variables à créer dans GitLab › Settings › CI/CD › Variables (jamais en dur ici) :
+#   REGISTRY           ex. localhost:8085/covoit (Harbor) ou localhost:5000 (registre simple)
+#   REGISTRY_USER      compte Harbor (laisser vide pour le registre simple)
+#   REGISTRY_PASSWORD  mot de passe Harbor, variable « Masked »
+
+stages:
+  - test
+  - build
+  - push
+
+variables:
+  IMAGE_NAME: "covoit-iset"
+  # Dépendances Maven gardées dans le dossier du projet pour le cache entre deux pipelines
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+
+cache:
+  key: maven
+  paths:
+    - .m2/repository
+
+test:
+  stage: test
+  tags:
+    - local
+  script:
+    - echo "Exécution des tests unitaires..."
+    - java -version
+    # Les tests Selenium (tag e2e) sont exclus par défaut : ils ont besoin d'un navigateur et de l'application démarrée
+    - mvn -B test
+    - echo "Tests réussis !"
+  artifacts:
+    when: always
+    reports:
+      # GitLab affiche le résultat de chaque test dans la Merge Request
+      junit: target/surefire-reports/TEST-*.xml
+
+build-image:
+  stage: build
+  tags:
+    - local
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  script:
+    - echo "Construction de l'image Docker..."
+    - docker build --build-arg VERSION=$CI_COMMIT_SHORT_SHA -t $IMAGE_NAME:$CI_COMMIT_SHORT_SHA .
+    - docker tag $IMAGE_NAME:$CI_COMMIT_SHORT_SHA $IMAGE_NAME:latest
+    - echo "Image construite : $IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+
+push-image:
+  stage: push
+  tags:
+    - local
+  rules:
+    # Seulement sur main, et seulement si un registre est configuré
+    - if: '$CI_COMMIT_BRANCH == "main" && $REGISTRY'
+  script:
+    - echo "Envoi de l'image vers $REGISTRY..."
+    # Connexion seulement si un compte est défini (Harbor) ; le registre simple n'en a pas besoin
+    - if [ -n "$REGISTRY_USER" ]; then echo "$REGISTRY_PASSWORD" | docker login "${REGISTRY%%/*}" -u "$REGISTRY_USER" --password-stdin; fi
+    - docker tag $IMAGE_NAME:$CI_COMMIT_SHORT_SHA $REGISTRY/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+    - docker tag $IMAGE_NAME:$CI_COMMIT_SHORT_SHA $REGISTRY/$IMAGE_NAME:latest
+    - docker push $REGISTRY/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+    - docker push $REGISTRY/$IMAGE_NAME:latest
+    - echo "Image publiée : $REGISTRY/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"

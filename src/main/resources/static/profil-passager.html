@@ -2,43 +2,54 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
   <title>Profil du passager · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <!-- User story #11 : Consulter le profil du passager -->
 <body>
-<main>
-  <div id="alerte" hidden></div>
-  <div id="profil"></div>
+<main class="conteneur">
+  <div id="retour"></div>
+  <div id="contenu"><div class="bloc"><div class="chargement"></div><div class="chargement"></div></div></div>
 </main>
 
 <script src="js/api.js"></script>
 <script>
-  const utilisateur = exigerConnexion();
-  const id = Number(new URLSearchParams(window.location.search).get('id'));
-  afficherNav(id === utilisateur.id ? 'profil' : '');
+  const u = exigerConnexion();
+  afficherNav('recherche');
+  const id = Number(parametre('id'));
+  const $ = x => document.getElementById(x);
+  $('retour').innerHTML = lienRetour();
 
-  async function charger() {
+  (async () => {
     try {
       const p = await api('/passagers/' + id);
-      const contacter = id !== utilisateur.id
-        ? `<a class="bouton" href="messages.html?avec=${p.id}">Envoyer un message</a>` : '';
-      document.getElementById('profil').innerHTML = `
-        <h1>${echapper(p.prenom)} ${echapper(p.nom)}</h1>
-        <div class="carte">
-          <p>Passager · membre depuis le ${formaterDate(p.membreDepuis)}</p>
-          <div class="stats">
-            <div class="stat"><strong>${p.reservationsConfirmees}</strong>réservation(s) confirmée(s)</div>
-            <div class="stat"><strong>${p.reservationsAnnulees}</strong>réservation(s) annulée(s)</div>
+      const nom = p.prenom + ' ' + p.nom;
+      const depuis = new Date(p.membreDepuis).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      $('contenu').innerHTML = `
+        <div class="etroit">
+          <div class="bloc">
+            <div class="identite">
+              ${avatar(nom, 'xl')}
+              <h1>${echapper(nom)}</h1>
+              <span class="etat">Inscrit depuis ${depuis}</span>
+            </div>
+            <div class="chiffres">
+              <div><strong>${p.reservationsConfirmees}</strong><span>réservation${p.reservationsConfirmees > 1 ? 's' : ''} confirmée${p.reservationsConfirmees > 1 ? 's' : ''}</span></div>
+              <div><strong>${p.reservationsAnnulees}</strong><span>annulée${p.reservationsAnnulees > 1 ? 's' : ''}</span></div>
+            </div>
+            ${id !== u.id ? `<div style="padding:0 22px 22px"><a class="btn plein" href="messages.html?avec=${p.id}">${ic('message')} Écrire à ${echapper(p.prenom)}</a>
+              <div style="margin-top:10px">${boutonsSecurite(p.id, nom)}</div></div>` : ''}
           </div>
-          <p>${contacter}</p>
         </div>`;
+      brancherSecurite($('contenu'));
     } catch (err) {
-      afficherAlerte(document.getElementById('alerte'), err.message);
+      $('contenu').innerHTML = `<div class="bloc">${etatVide('alerte', 'Ce profil est introuvable', echapper(err.message))}</div>`;
     }
-  }
-  charger();
+  })();
 </script>
 </body>
 </html>

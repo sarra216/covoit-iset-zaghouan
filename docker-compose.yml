@@ -1,0 +1,63 @@
+# Application + base MySQL.
+#   1. copier .env.exemple en .env et remplir les valeurs
+#   2. docker compose up -d --build        (construit l'image localement)
+#   3. curl http://localhost:3000/health   → {"status":"ok",...}
+# En déploiement (deploy.py), IMAGE pointe vers l'image poussée dans le registre par le pipeline.
+services:
+
+  base:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: covoit
+      MYSQL_USER: covoit
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: Africa/Tunis
+    volumes:
+      # Volume nommé : les données survivent aux redémarrages et aux « docker compose down »
+      - donnees-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - appnet
+
+  application:
+    image: ${IMAGE:-covoit-iset:latest}
+    build: .
+    restart: unless-stopped
+    # L'application attend que MySQL soit vraiment prêt (healthcheck), pas seulement démarré
+    depends_on:
+      base:
+        condition: service_healthy
+    ports:
+      - "3000:8080"
+    environment:
+      # « base » est le nom du service : c'est aussi son nom DNS dans le réseau appnet
+      DATABASE_URL: jdbc:mysql://base:3306/covoit?useUnicode=true&characterEncoding=utf8&serverTimezone=Africa/Tunis
+      DATABASE_USERNAME: covoit
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_URL: ${APP_URL}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      DOMAINES_AUTORISES: ${DOMAINES_AUTORISES}
+      EMAIL_VERIFICATION: ${EMAIL_VERIFICATION}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM}
+    volumes:
+      - journaux:/app/logs
+    networks:
+      - appnet
+
+volumes:
+  donnees-mysql:
+  journaux:
+
+networks:
+  appnet:

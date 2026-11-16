@@ -3,3 +3,9 @@ target/
 *.iml
 .vscode/
 .DS_Store
+
+# Secrets et données locales (ne jamais publier)
+.env
+logs/
+sauvegardes/
+.m2/

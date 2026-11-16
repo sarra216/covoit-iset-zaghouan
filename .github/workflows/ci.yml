@@ -1,0 +1,36 @@
+# Intégration continue : à chaque push et à chaque Pull Request vers main,
+# GitHub compile le projet et lance les tests unitaires.
+# Une PR dont les tests échouent affiche une croix rouge avant la fusion.
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  tests:
+    name: Compilation et tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Compiler et lancer les tests
+        run: mvn -B test
+
+      - name: Garder le rapport des tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapports-tests
+          path: target/surefire-reports/

@@ -10,6 +10,10 @@ public record ProfilConducteurResponse(
         String prenom,
         LocalDate membreDepuis,
         long nombreTrajets,
+        String voitureModele,
+        String voitureCouleur,
+        Double noteMoyenne,
+        int nombreAvis,
         List<TrajetResponse> trajetsAVenir
 ) {
 }

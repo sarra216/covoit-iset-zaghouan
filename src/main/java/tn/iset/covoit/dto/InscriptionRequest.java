@@ -1,5 +1,7 @@
 package tn.iset.covoit.dto;
 
+import jakarta.validation.constraints.AssertTrue;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -15,6 +17,7 @@ public record InscriptionRequest(
         @Size(min = 6, message = "Le mot de passe doit contenir au moins 6 caractères") String motDePasse,
         @NotBlank(message = "Le téléphone est obligatoire")
         @Pattern(regexp = "\\d{8}", message = "Le téléphone doit contenir 8 chiffres") String telephone,
-        @NotNull(message = "Le rôle est obligatoire (CONDUCTEUR ou PASSAGER)") Role role
+        @NotNull(message = "Le rôle est obligatoire (CONDUCTEUR ou PASSAGER)") Role role,
+        @AssertTrue(message = "Vous devez accepter les conditions d'utilisation") boolean conditionsAcceptees
 ) {
 }

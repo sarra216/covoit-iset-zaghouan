@@ -19,6 +19,9 @@
 
     <properties>
         <java.version>17</java.version>
+        <!-- Par défaut : tous les tests sauf ceux du navigateur (voir le profil e2e plus bas) -->
+        <tests.groupes></tests.groupes>
+        <tests.exclus>e2e</tests.exclus>
     </properties>
 
     <dependencies>
@@ -34,10 +37,15 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-        <!-- BCrypt pour chiffrer les mots de passe (sans Spring Security complet) -->
+        <!-- Spring Security : protège l'API avec des jetons JWT (et fournit BCrypt pour les mots de passe) -->
         <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-crypto</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <!-- Envoi des emails (vérification du compte, mot de passe oublié) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
         <dependency>
             <groupId>com.mysql</groupId>
@@ -49,6 +57,12 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Tests de bout en bout dans un vrai navigateur (version gérée par Spring Boot) -->
+        <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-java</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -57,6 +71,26 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <!-- « mvn test » : tests unitaires seulement. Les tests Selenium (tag e2e) ont besoin
+                 de l'application démarrée et de Chrome : on les lance avec « mvn test -Pe2e ». -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <groups>${tests.groupes}</groups>
+                    <excludedGroups>${tests.exclus}</excludedGroups>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>e2e</id>
+            <properties>
+                <tests.groupes>e2e</tests.groupes>
+                <tests.exclus>aucun</tests.exclus>
+            </properties>
+        </profile>
+    </profiles>
 </project>

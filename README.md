@@ -1,87 +1,122 @@
-# 🚗 Covoit ISET Zaghouan
+# Covoit ISET Zaghouan
 
-Application de covoiturage pour les étudiants de l'ISET Zaghouan : le **conducteur** propose un trajet,
-le **passager** le cherche, le réserve et contacte le conducteur.
+Application web de covoiturage pour les étudiants de l'ISET Zaghouan : un **conducteur** propose un trajet,
+un **passager** le trouve et demande une place, le conducteur **accepte ou refuse**, puis ils échangent
+par messagerie et le passager **note** le conducteur après le trajet.
 
-**Technologies :** Java 17 · Spring Boot 3 (REST API) · Spring Data JPA · MySQL · HTML / CSS / JavaScript
+Projet réalisé en Scrum par **Khadija Benbrahim** et **Chayma Tahri**, encadré par **Mme Chifa Labidi**.
 
----
-
-## Fonctionnalités réalisées
-
-| Sprint | Issue | User story | API | Page |
-|---|---|---|---|---|
-| 1 | #1 | S'inscrire / Se connecter | `POST /api/auth/inscription` · `POST /api/auth/connexion` | `index.html` |
-| 1 | #26 | Proposer un trajet | `POST /api/trajets` | `proposer.html` |
-| 1 | #3 | Chercher un trajet | `GET /api/trajets/recherche?depart=&arrivee=&date=` | `recherche.html` |
-| 1 | #2 | Consulter le profil du conducteur | `GET /api/conducteurs/{id}` | `profil-conducteur.html` |
-| 2 | #4 | Réserver une place | `POST /api/reservations` · `GET /api/reservations/passager/{id}` | `recherche.html` (bouton Réserver) |
-| 2 | #6 | Annuler une réservation | `PUT /api/reservations/{id}/annulation?passagerId=` | `reservations.html` |
-| 2 | #11 | Consulter le profil du passager | `GET /api/passagers/{id}` | `profil-passager.html` |
-| 2 | #7 | Contacter le conducteur | `POST /api/messages` · `GET /api/messages/conversation` · `GET /api/messages/utilisateur/{id}` | `messages.html` |
+**Technologies :** Java 17 · Spring Boot 3 · Spring Security (JWT) · Spring Data JPA · MySQL · HTML / CSS / JavaScript · Leaflet (OpenStreetMap)
+**DevOps :** Git · GitLab CE · GitLab CI/CD · GitLab Runner · Docker · Docker Compose · Harbor · pyinfra · Uptime Kuma
 
 ---
 
-## Lancer le projet
+## Fonctionnalités
 
-1. **Démarrer MySQL** (par exemple avec XAMPP). La base `covoit_iset` est créée automatiquement.
-   Si votre utilisateur MySQL a un mot de passe, modifiez `src/main/resources/application.properties` :
-   ```properties
-   spring.datasource.username=root
-   spring.datasource.password=votre_mot_de_passe
-   ```
-2. **Ouvrir le projet** dans IntelliJ IDEA (ou VS Code) et lancer `CovoitApplication`,
-   ou en ligne de commande :
-   ```bash
-   mvn spring-boot:run
-   ```
-3. **Ouvrir** http://localhost:8080 dans le navigateur.
-
-Les tables `utilisateurs`, `trajets`, `reservations` et `messages` sont créées automatiquement par JPA.
-
-### Tester avec Postman
-Importer `postman/Covoit-ISET-Zaghouan.postman_collection.json` (File → Import), puis lancer les requêtes dans l'ordre.
+| Domaine | Ce que l'application permet |
+|---|---|
+| Comptes | Inscription avec acceptation des conditions, connexion par jeton JWT, mot de passe oublié, vérification de l'email, suppression du compte |
+| Trajets | Proposer un trajet (point de rendez-vous sur la carte), rechercher, trajets populaires, annulation par le conducteur |
+| Réservations | Demande de place, acceptation ou refus par le conducteur, expiration automatique (12 h ou 2 h avant le départ), annulation |
+| Échanges | Messagerie, notifications (cloche), rappel avant le départ, notes et avis sur le conducteur |
+| Assistant | Chatbot en français : « un trajet de Tunis vers l'ISET demain matin », questions fréquentes |
+| Sécurité | Mots de passe BCrypt, 5 essais de connexion maximum, signaler ou bloquer un utilisateur |
+| Administration | Statistiques, traitement des signalements, suspension des comptes |
+| Supervision | `GET /health` : état de l'application, de la base et version déployée |
 
 ---
 
-## Scénario de démonstration
+## Architecture DevOps
 
-1. S'inscrire comme **conducteur** (ex. Ahmed) → proposer un trajet *Tunis → Zaghouan*.
-2. Se déconnecter, s'inscrire comme **passager** (ex. Sarra) → chercher *Zaghouan*.
-3. Cliquer sur le nom du conducteur → voir son **profil** → **Contacter le conducteur**.
-4. Revenir à la recherche → **Réserver** 1 place → les places libres diminuent.
-5. **Mes réservations** → **Annuler** → la place est rendue au trajet.
-6. **Mon profil** → les compteurs de réservations confirmées / annulées.
+| Outil | Rôle |
+|---|---|
+| **GitLab CE** (conteneur local, port 8929) | Gestion du code source, Merge Requests, CI/CD |
+| **GitLab Runner** (Shell executor, tag `local`) | Exécute les jobs du pipeline sur la machine |
+| **Docker / Docker Compose** | Image de l'application (multi-stage, utilisateur non-root) + base MySQL |
+| **Harbor** (conteneur local, port 8085) | Registre Docker privé : reçoit les images construites par le CI |
+| **pyinfra** (`deploy.py`) | Déploiement automatisé : récupère la nouvelle image et redémarre le conteneur |
+| **Uptime Kuma** (port 3001) | Supervision : interroge `/health` toutes les 60 secondes |
+
+```
+ Développeur ──push──▶ GitLab ──jobs──▶ Runner ──image──▶ Harbor
+                         │                                  │
+                  Merge Request                      docker pull
+                    (tests CI)                            │
+                                                 pyinfra (deploy.py)
+                                                          │
+ Uptime Kuma ──GET /health toutes les 60 s──▶ Application :3000 ──▶ MySQL
+```
+
+## Flux du pipeline
+
+1. Le développeur pousse sur une branche `feature/...` (personne ne peut pousser directement sur `main`).
+2. La Merge Request exécute le job **test** : `mvn -B test` (tests unitaires JUnit 5 / Mockito).
+3. La fusion dans `main` exécute **build** (image `covoit-iset:<commit>`) puis **push** (envoi vers Harbor).
+4. `pyinfra @local deploy.py` récupère la nouvelle image et redémarre le conteneur, puis vérifie `/health`.
+5. Uptime Kuma sonde `/health` en continu : vert si l'application et la base répondent, rouge sinon.
 
 ---
 
-## Règles métier
+## Comment exécuter
 
-- Mot de passe chiffré avec **BCrypt** ; l'email est unique.
-- Seul un **conducteur** peut proposer un trajet ; pas de trajet dans le passé ; départ ≠ arrivée.
-- La recherche n'affiche que les trajets **à venir** avec des **places libres**.
-- On ne peut pas réserver **son propre trajet**, ni **deux fois** le même trajet, ni plus de places que disponibles.
-- Deux réservations simultanées de la dernière place sont bloquées (`@Version`, verrou optimiste).
-- On ne peut annuler que **sa propre** réservation, **avant** le départ ; les places sont rendues.
-- Les profils publics n'affichent **ni email ni téléphone**.
+### En développement (Eclipse + XAMPP)
 
-> **Limite connue :** l'utilisateur connecté est gardé dans le navigateur (`localStorage`) et son id est envoyé
-> à l'API. Il n'y a pas encore de jeton (JWT) : la sécurisation complète est prévue dans un sprint suivant.
+1. Démarrer MySQL (XAMPP) et créer la base `covoit_iset`.
+2. Lancer `CovoitApplication` (argument `--server.port=8082`).
+3. Ouvrir http://localhost:8082.
+
+### Avec Docker Compose
+
+```bash
+cp .env.exemple .env              # puis remplir les mots de passe et JWT_SECRET
+docker compose up -d --build      # application + MySQL
+curl http://localhost:3000/health # → {"status":"ok","version":"dev","base":"ok"}
+docker compose down
+```
+
+### Pipeline et déploiement
+
+```bash
+# Envoyer le code sur GitLab (via une branche et une Merge Request)
+git checkout -b feature/ma-fonctionnalite
+git push gitlab feature/ma-fonctionnalite
+
+# Après la fusion dans main et le pipeline réussi : déployer la nouvelle image
+pyinfra @local deploy.py          # ou ./deploy.sh
+curl http://localhost:3000/health
+
+# Démonstration complète en 30 secondes
+./demo.sh
+```
+
+### Supervision
+
+```bash
+docker run -d --name uptime-kuma --restart unless-stopped \
+  -p 3001:3001 -v uptime-kuma-data:/app/data louislam/uptime-kuma:1
+# http://localhost:3001 › moniteur HTTP(s) › http://host.docker.internal:3000/health
+```
+
+### Tests
+
+| Commande | Tests |
+|---|---|
+| `mvn test` | Tests unitaires (services, sécurité JWT, santé) : sans base de données, aussi lancés par le CI |
+| `mvn test -Pe2e` | Tests Selenium de bout en bout : l'application doit tourner et Chrome être installé |
 
 ---
 
-## Structure
+## Structure du projet
 
 ```
 src/main/java/tn/iset/covoit/
-├── entity/        Utilisateur, Trajet, Reservation, Message (+ Role, StatutReservation)
-├── repository/    accès à la base (Spring Data JPA)
-├── dto/           données reçues et renvoyées par l'API
-├── service/       règles métier (une classe par user story)
-├── controller/    endpoints REST
-├── exception/     erreurs renvoyées en JSON { "message": "..." }
-└── config/        BCrypt, CORS
-src/main/resources/static/   pages HTML, css/style.css, js/api.js
-docs/                         objectifs et bilans des sprints
-postman/                      collection de tests de l'API
+  controller/   API REST (+ HealthController : GET /health)
+  service/      règles métier
+  repository/   accès aux données (Spring Data JPA)
+  entity/       tables de la base
+  dto/          données échangées avec le navigateur
+  security/     JWT, filtre et règles d'accès
+src/main/resources/static/   pages HTML, CSS, JavaScript
+src/test/java/               tests unitaires et tests Selenium (e2e/)
+Dockerfile · docker-compose.yml · .gitlab-ci.yml · deploy.py · deploy.sh · demo.sh
 ```

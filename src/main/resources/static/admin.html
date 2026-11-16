@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
+  <title>Administration · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<!-- Administration : statistiques, signalements, comptes -->
+<body>
+<main class="conteneur">
+  <h1 class="titre">Administration</h1>
+  <p class="chapeau">Examinez les signalements et suspendez les comptes qui ne respectent pas les règles.</p>
+
+  <div class="tuiles" id="stats">
+    <div class="tuile"><strong>…</strong><span>comptes</span></div>
+    <div class="tuile"><strong>…</strong><span>trajets à venir</span></div>
+    <div class="tuile"><strong>…</strong><span>réservations actives</span></div>
+    <div class="tuile"><strong>…</strong><span>signalements à traiter</span></div>
+  </div>
+
+  <div class="segments" role="tablist">
+    <button data-onglet="signalements" class="actif" role="tab">Signalements à traiter</button>
+    <button data-onglet="traites" role="tab">Traités</button>
+    <button data-onglet="comptes" role="tab">Comptes</button>
+  </div>
+
+  <div class="entree" id="zone-recherche" style="margin-bottom:16px;max-width:420px" hidden>
+    <span id="ic-recherche"></span>
+    <input id="recherche" placeholder="Nom, prénom ou email" autocomplete="off">
+  </div>
+  <div id="liste"></div>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+  const u = exigerConnexion();
+  if (u.role !== 'ADMIN') location.href = 'recherche.html';
+  afficherNav('admin');
+  const $ = id => document.getElementById(id);
+  $('ic-recherche').innerHTML = ic('recherche');
+  let onglet = 'signalements';
+
+  document.querySelectorAll('[data-onglet]').forEach(b => b.addEventListener('click', () => {
+    onglet = b.dataset.onglet;
+    document.querySelectorAll('[data-onglet]').forEach(x => x.classList.toggle('actif', x === b));
+    charger();
+  }));
+  let minuteur;
+  $('recherche').addEventListener('input', () => { clearTimeout(minuteur); minuteur = setTimeout(charger, 300); });
+
+  async function chargerStats() {
+    try {
+      const s = await api('/admin/statistiques');
+      const valeurs = [s.utilisateurs, s.trajetsAVenir, s.reservationsActives, s.signalementsOuverts];
+      document.querySelectorAll('#stats strong').forEach((el, i) => { el.textContent = valeurs[i]; });
+      document.querySelectorAll('#stats .tuile')[3].classList.toggle('alerte-tuile', s.signalementsOuverts > 0);
+    } catch (err) { toast(err.message, 'erreur'); }
+  }
+
+  async function charger() {
+    $('zone-recherche').hidden = onglet !== 'comptes';
+    $('liste').innerHTML = `<div class="bloc">${chargement(3)}</div>`;
+    try {
+      if (onglet === 'comptes') afficherComptes(await api('/admin/utilisateurs?q=' + encodeURIComponent($('recherche').value.trim())));
+      else afficherSignalements(await api('/admin/signalements?traites=' + (onglet === 'traites')));
+    } catch (err) {
+      $('liste').innerHTML = `<div class="bloc">${etatVide('alerte', 'Chargement impossible', echapper(err.message))}</div>`;
+    }
+  }
+
+  function afficherSignalements(liste) {
+    if (!liste.length) {
+      $('liste').innerHTML = `<div class="bloc">${etatVide('ok', onglet === 'traites' ? 'Aucun signalement traité' : 'Aucun signalement à traiter',
+        'Les signalements envoyés par les utilisateurs apparaissent ici.')}</div>`;
+      return;
+    }
+    $('liste').innerHTML = `<div class="bloc liste">${liste.map(s => `
+      <div class="signalement">
+        <div class="tete-signalement">
+          <span class="etat rouge">${echapper(MOTIFS[s.motif] || s.motif)}</span>
+          <time>${formaterMoment(s.dateCreation)}</time>
+        </div>
+        <p><strong>${echapper(s.signaleNom)}</strong> signalé(e) par ${echapper(s.auteurNom)}
+          ${s.signalementsContreLui > 1 ? `<span class="etat jaune">${s.signalementsContreLui} signalements au total</span>` : ''}
+          ${s.signaleSuspendu ? '<span class="etat">Compte suspendu</span>' : ''}</p>
+        ${s.trajet ? `<p class="aide">Trajet : <a href="trajet.html?id=${s.trajetId}">${echapper(s.trajet)}</a></p>` : ''}
+        ${s.details ? `<blockquote>${echapper(s.details)}</blockquote>` : ''}
+        ${s.traite ? '' : `<div class="rangee">
+          <a class="btn contour petit" href="messages.html?avec=${s.signaleId}">${ic('message')} Écrire à la personne</a>
+          ${s.signaleSuspendu ? '' : `<button class="btn danger petit" onclick="suspendre(${s.signaleId}, true)">Suspendre le compte</button>`}
+          <button class="btn petit" onclick="traiter(${s.id})">${ic('ok')} Marquer comme traité</button>
+        </div>`}
+      </div>`).join('')}</div>`;
+  }
+
+  function afficherComptes(liste) {
+    if (!liste.length) {
+      $('liste').innerHTML = `<div class="bloc">${etatVide('utilisateurs', 'Aucun compte trouvé', 'Essayez une autre recherche.')}</div>`;
+      return;
+    }
+    const ROLES = { CONDUCTEUR: 'Conducteur', PASSAGER: 'Passager', ADMIN: 'Admin' };
+    $('liste').innerHTML = `<div class="bloc liste">${liste.map(c => `
+      <div class="compte-admin">
+        ${avatar(c.nomComplet, 's')}
+        <div class="qui"><strong>${echapper(c.nomComplet)}</strong><span>${echapper(c.email)}</span></div>
+        <div class="badges">
+          <span class="etat ${c.role === 'ADMIN' ? 'bleu' : ''}">${ROLES[c.role] || c.role}</span>
+          ${c.emailVerifie ? '' : '<span class="etat jaune">Email non vérifié</span>'}
+          ${c.signalements ? `<span class="etat rouge">${c.signalements} signalement${c.signalements > 1 ? 's' : ''}</span>` : ''}
+          ${c.supprime ? '<span class="etat">Supprimé</span>' : c.suspendu ? '<span class="etat rouge">Suspendu</span>' : ''}
+        </div>
+        <div class="actions">
+          ${c.role === 'ADMIN' || c.supprime ? '' : c.suspendu
+            ? `<button class="btn contour petit" onclick="suspendre(${c.id}, false)">Réactiver</button>`
+            : `<button class="btn danger petit" onclick="suspendre(${c.id}, true)">Suspendre</button>`}
+        </div>
+      </div>`).join('')}</div>`;
+  }
+
+  async function suspendre(id, suspendu) {
+    if (suspendu && !(await confirmer('Suspendre ce compte ?',
+      'La personne est déconnectée immédiatement et ne peut plus se connecter. Vous pourrez réactiver le compte plus tard.',
+      'Suspendre', true))) return;
+    try {
+      await api(`/admin/utilisateurs/${id}/suspension?suspendu=${suspendu}`, { method: 'PUT' });
+      toast(suspendu ? 'Compte suspendu' : 'Compte réactivé');
+      charger();
+    } catch (err) { toast(err.message, 'erreur'); }
+  }
+
+  async function traiter(id) {
+    try {
+      await api(`/admin/signalements/${id}/traitement`, { method: 'PUT' });
+      toast('Signalement marqué comme traité');
+      chargerStats();
+      charger();
+    } catch (err) { toast(err.message, 'erreur'); }
+  }
+
+  chargerStats();
+  charger();
+</script>
+</body>
+</html>

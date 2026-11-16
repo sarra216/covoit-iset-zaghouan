@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
+  <title>Mon profil · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<!-- Mon profil -->
+<body>
+<main class="conteneur">
+  <h1 class="titre">Mon profil</h1>
+  <p class="chapeau">Ce que les autres étudiants voient de vous, et vos réglages.</p>
+  <div class="colonnes" id="contenu"></div>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+  const u = exigerConnexion();
+  afficherNav('profil');
+  const $ = id => document.getElementById(id);
+  const conducteur = estConducteur(u);
+  const admin = u.role === 'ADMIN';
+
+  function plaqueHtml(matricule) {
+    const m = matricule.match(/^(\d{1,3}) تونس (\d{1,4})$/);
+    return m
+      ? `<span class="plaque-affichee" dir="ltr"><span>${m[1]}</span><span class="tounes" dir="rtl">تونس</span><span>${m[2]}</span></span>`
+      : `<span class="plaque-affichee" dir="ltr">${echapper(matricule)}</span>`;
+  }
+
+  $('contenu').innerHTML = `
+    <section>
+      <div class="bloc">
+        <div class="identite">
+          ${avatar(u.prenom + ' ' + u.nom, 'xl')}
+          <h1>${echapper(u.prenom)} ${echapper(u.nom)}</h1>
+          <span class="etat ${conducteur ? 'bleu' : ''}">${conducteur ? 'Conducteur et passager' : 'Passager'}</span>
+        </div>
+        <div class="chiffres" id="chiffres"><div>&nbsp;</div><div>&nbsp;</div></div>
+      </div>
+
+      <div class="bloc rembourre">
+        <h2 class="bloc-titre">Coordonnées</h2>
+        <div class="donnee" style="border-top:none;padding-top:0"><span>Email</span><strong>${echapper(u.email)}</strong></div>
+        <div class="donnee"><span>Téléphone</span><strong>+216 ${echapper(u.telephone)}</strong></div>
+        <p class="aide">Votre email et votre téléphone ne sont jamais affichés sur votre profil public.</p>
+      </div>
+
+      ${conducteur ? `
+      <div class="bloc rembourre">
+        <h2 class="bloc-titre">Ma voiture</h2>
+        <div class="donnee" style="border-top:none;padding-top:0"><span>Modèle</span><strong>${echapper(u.voitureModele || 'Non renseigné')}</strong></div>
+        <div class="donnee"><span>Couleur</span><strong>${echapper(u.voitureCouleur || 'Non renseignée')}</strong></div>
+        ${u.matricule ? `<div style="margin-top:12px">${plaqueHtml(u.matricule)}</div>` : ''}
+      </div>` : ''}
+    </section>
+
+    <aside>
+      <div class="bloc menu">
+        <a href="completer-profil.html">${ic('crayon')} Modifier mon profil<span class="fin">${ic('droite')}</span></a>
+        ${admin ? `<a href="admin.html">${ic('bouclier')} Administration<span class="fin">${ic('droite')}</span></a>` : ''}
+        ${conducteur || admin ? '' : `<a href="completer-profil.html?suite=proposer">${ic('voiture')} Activer le mode conducteur<span class="fin">${ic('droite')}</span></a>`}
+        <a href="${conducteur ? 'profil-conducteur' : 'profil-passager'}.html?id=${u.id}">${ic('bouclier')} Voir mon profil public<span class="fin">${ic('droite')}</span></a>
+        <a href="reservations.html">${ic('billet')} Mes trajets<span class="fin">${ic('droite')}</span></a>
+        <button id="voir-blocages">${ic('croix')} Utilisateurs bloqués<span class="fin">${ic('droite')}</span></button>
+        <button class="rouge" id="deconnexion">${ic('sortie')} Se déconnecter</button>
+      </div>
+      <div class="bloc menu">
+        <a href="conditions.html">${ic('billet')} Conditions d'utilisation<span class="fin">${ic('droite')}</span></a>
+        <a href="confidentialite.html">${ic('bouclier')} Confidentialité<span class="fin">${ic('droite')}</span></a>
+        ${admin ? '' : `<button class="rouge" id="supprimer">${ic('alerte')} Supprimer mon compte</button>`}
+      </div>
+    </aside>`;
+
+  // ---------- Utilisateurs bloqués ----------
+  $('voir-blocages').onclick = async () => {
+    const { element, fermer } = ouvrirFenetre(`<h3>Utilisateurs bloqués</h3>
+      <p class="chapeau">Vous ne pouvez pas vous écrire ni réserver dans les trajets l'un de l'autre.</p>
+      <div class="liste" id="liste-blocages">${chargement(1)}</div>
+      <div class="rangee" style="justify-content:flex-end;margin-top:16px"><button class="btn contour" data-r="ok">Fermer</button></div>`);
+    element.querySelector('[data-r="ok"]').onclick = fermer;
+    const remplir = async () => {
+      const zone = element.querySelector('#liste-blocages');
+      try {
+        const liste = await api('/blocages/' + u.id);
+        zone.innerHTML = liste.length ? liste.map(b => `
+          <div class="demande" style="padding:12px 0">${avatar(b.nom, 's')}
+            <div class="qui"><strong>${echapper(b.nom)}</strong><span>depuis ${formaterMoment(b.depuis)}</span></div>
+            <button class="btn contour petit" data-debloquer="${b.utilisateurId}">Débloquer</button></div>`).join('')
+          : '<p class="aide">Vous n\'avez bloqué personne.</p>';
+        zone.querySelectorAll('[data-debloquer]').forEach(bouton => bouton.onclick = async () => {
+          try {
+            await api(`/blocages?bloqueurId=${u.id}&bloqueId=${bouton.dataset.debloquer}`, { method: 'DELETE' });
+            toast('Utilisateur débloqué');
+            remplir();
+          } catch (err) { toast(err.message, 'erreur'); }
+        });
+      } catch (err) { zone.innerHTML = `<p class="aide">${echapper(err.message)}</p>`; }
+    };
+    remplir();
+  };
+
+  // ---------- Supprimer mon compte ----------
+  if ($('supprimer')) $('supprimer').onclick = () => {
+    const { element, fermer } = ouvrirFenetre(`<h3>Supprimer votre compte ?</h3>
+      <p class="chapeau">Vos données personnelles (nom, email, téléphone, voiture) seront effacées.
+        Vos trajets à venir et vos réservations seront annulés, et les personnes concernées prévenues.
+        <strong>Cette action est définitive.</strong></p>
+      <label class="etiquette" for="mdp-suppression">Confirmez avec votre mot de passe</label>
+      <div class="entree"><input id="mdp-suppression" type="password" autocomplete="current-password"></div>
+      <div class="rangee" style="justify-content:flex-end;margin-top:16px">
+        <button class="btn contour" data-r="non">Garder mon compte</button>
+        <button class="btn danger" data-r="oui">Supprimer définitivement</button>
+      </div>`);
+    element.querySelector('[data-r="non"]').onclick = fermer;
+    element.querySelector('[data-r="oui"]').onclick = async () => {
+      try {
+        await api(`/utilisateurs/${u.id}/suppression`, { method: 'POST',
+          body: { motDePasse: element.querySelector('#mdp-suppression').value } });
+        oublierSession();
+        location.href = 'index.html';
+      } catch (err) { toast(err.message, 'erreur'); }
+    };
+  };
+
+  $('deconnexion').onclick = async () => {
+    if (await confirmer('Se déconnecter ?', 'Vous devrez saisir votre email et votre mot de passe pour revenir.', 'Se déconnecter', true)) deconnexion();
+  };
+
+  (async () => {
+    try {
+      const passager = await api('/passagers/' + u.id);
+      const n = passager.reservationsConfirmees;
+      let html = `<div><strong>${n}</strong><span>réservation${n > 1 ? 's' : ''}</span></div>`;
+      if (conducteur) {
+        const c = await api('/conducteurs/' + u.id);
+        html = `<div><strong>${c.nombreTrajets}</strong><span>trajet${c.nombreTrajets > 1 ? 's' : ''} publié${c.nombreTrajets > 1 ? 's' : ''}</span></div>` + html;
+      } else {
+        html += `<div><strong>${new Date(passager.membreDepuis).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}</strong><span>inscrit depuis</span></div>`;
+      }
+      $('chiffres').innerHTML = html;
+    } catch (err) { $('chiffres').hidden = true; }
+  })();
+</script>
+</body>
+</html>
