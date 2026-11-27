@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
+  <title>Politique de confidentialité · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="conteneur">
+  <div id="retour-public"></div>
+  <article class="page-texte">
+    <h1 class="titre">Politique de confidentialité</h1>
+    <p class="chapeau">Dernière mise à jour : novembre 2026. Cette page explique quelles données nous gardons, pourquoi, et comment les supprimer.</p>
+
+    <h2>Qui est responsable</h2>
+    <p>Covoit ISET Zaghouan est un projet de l'ISET Zaghouan, réalisé par Khadija Benbrahim et Chayma Tahri.
+      Responsable du traitement : <span class="a-completer">[nom et contact du responsable désigné par l'ISET]</span>.</p>
+
+    <h2>Les données que nous gardons</h2>
+    <ul>
+      <li><strong>Votre compte</strong> : nom, prénom, email, téléphone, mot de passe (enregistré chiffré, jamais en clair),
+        date d'inscription et date d'acceptation des conditions.</li>
+      <li><strong>Votre voiture</strong>, si vous conduisez : modèle, couleur, matricule.</li>
+      <li><strong>Votre activité</strong> : trajets publiés, réservations, messages, avis, notifications, signalements et blocages.</li>
+      <li><strong>Des journaux techniques</strong> (connexions, erreurs), gardés 14 jours, pour la sécurité et la correction des bugs.</li>
+    </ul>
+
+    <h2>Pourquoi</h2>
+    <p>Uniquement pour faire fonctionner le service (mettre en relation conducteurs et passagers), le sécuriser
+      (connexion, limitation des tentatives) et le modérer (signalements). Nous ne vendons ni ne partageons vos données
+      à des fins commerciales, et il n'y a pas de publicité.</p>
+
+    <h2>Qui voit quoi</h2>
+    <ul>
+      <li>Les autres utilisateurs voient votre prénom, votre nom, votre note, vos trajets et le modèle et la couleur de votre voiture.</li>
+      <li>Votre <strong>email</strong>, votre <strong>téléphone</strong> et votre <strong>matricule</strong> ne sont jamais affichés aux autres utilisateurs.</li>
+      <li>Vos messages ne sont visibles que par vous et votre interlocuteur.</li>
+      <li>Les administrateurs voient les informations du compte (dont l'email) et les signalements, pour la modération.</li>
+    </ul>
+
+    <h2>Services extérieurs</h2>
+    <p>Les cartes viennent d'OpenStreetMap et les polices de caractères de Google Fonts : votre navigateur les contacte
+      directement, ce qui leur transmet votre adresse IP. Les emails (vérification, mot de passe oublié) passent par un
+      service d'envoi d'emails. L'application n'utilise pas de cookies publicitaires ni de mesure d'audience ;
+      votre session est gardée dans votre navigateur (stockage local) jusqu'à la déconnexion.</p>
+
+    <h2>Combien de temps</h2>
+    <p>Tant que votre compte existe. Quand vous supprimez votre compte, vos données personnelles (nom, email, téléphone, voiture)
+      sont effacées immédiatement ; vos trajets à venir et vos réservations sont annulés. Les messages et avis déjà envoyés
+      restent visibles par leurs destinataires, sous le nom « Compte supprimé ».</p>
+
+    <h2>Vos droits</h2>
+    <p>Conformément à la loi organique n° 2004-63 du 27 juillet 2004 relative à la protection des données à caractère personnel,
+      vous pouvez accéder à vos données, les corriger (<em>Profil › Modifier mon profil</em>), vous opposer à leur traitement
+      et les supprimer (<em>Profil › Supprimer mon compte</em>). Pour toute demande :
+      <span class="a-completer">[adresse email de contact]</span>. Vous pouvez aussi vous adresser à l'Instance nationale
+      de protection des données personnelles (INPDP).</p>
+  </article>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+  // Page publique : barre de navigation si l'on est connecté, sinon simple lien de retour
+  if (utilisateurConnecte()) afficherNav('profil');
+  else document.getElementById('retour-public').innerHTML = `<a class="retour" href="index.html">${ic('gauche')}Retour à l'accueil</a>`;
+</script>
+</body>
+</html>

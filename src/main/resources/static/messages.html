@@ -2,88 +2,124 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
   <title>Messages · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <!-- User story #7 : Contacter le conducteur -->
 <body>
-<main>
-  <h1>Messages</h1>
-  <div id="alerte" hidden></div>
-
-  <div class="messagerie">
-    <div class="carte contacts" id="contacts"></div>
-    <div class="carte">
-      <h2 id="titre-conversation" style="margin-top:0">Choisissez une conversation</h2>
-      <div class="fil" id="fil"></div>
+<main class="conteneur" style="padding-bottom:28px">
+  <div class="messagerie" id="messagerie">
+    <section class="contacts" aria-label="Conversations">
+      <h2>Messages</h2>
+      <div id="conversations"></div>
+    </section>
+    <section class="discussion" aria-label="Conversation">
+      <div class="tete" id="tete" hidden>
+        <button class="btn-icone" id="fermer" aria-label="Retour aux conversations"></button>
+        <span id="chat-avatar"></span>
+        <div><strong id="chat-nom"></strong></div>
+      </div>
+      <div class="fil" id="fil"><div class="vide-chat"><strong>Choisissez une conversation</strong><br>ou écrivez à un conducteur depuis la page d'un trajet.</div></div>
       <form id="form-message" hidden>
-        <div class="champ"><textarea id="contenu" maxlength="500" placeholder="Bonjour, où est le point de rendez-vous ?" required></textarea></div>
-        <button type="submit">Envoyer</button>
+        <input id="contenu" maxlength="500" placeholder="Écrire un message" autocomplete="off" aria-label="Message" required>
+        <button class="btn" type="submit" id="envoyer">Envoyer</button>
       </form>
-    </div>
+    </section>
   </div>
 </main>
 
 <script src="js/api.js"></script>
 <script>
-  const utilisateur = exigerConnexion();
+  const u = exigerConnexion();
   afficherNav('messages');
-  const alerte = document.getElementById('alerte');
-  // ?avec=ID ouvre directement la conversation (bouton « Contacter le conducteur »)
-  let interlocuteurId = Number(new URLSearchParams(window.location.search).get('avec')) || null;
+  const $ = id => document.getElementById(id);
+  $('fermer').innerHTML = ic('gauche');
+  let interlocuteur = Number(parametre('avec')) || null;
+  let nomInterlocuteur = '';
+  let minuteur;
 
-  async function chargerContacts() {
-    const messages = await api('/messages/utilisateur/' + utilisateur.id);
-    const contacts = new Map(); // id -> nom, du plus récent au plus ancien
-    for (const m of messages) {
-      const autreId = m.expediteurId === utilisateur.id ? m.destinataireId : m.expediteurId;
-      const autreNom = m.expediteurId === utilisateur.id ? m.destinataireNom : m.expediteurNom;
-      if (!contacts.has(autreId)) contacts.set(autreId, autreNom);
-    }
-    document.getElementById('contacts').innerHTML = contacts.size === 0
-      ? '<p class="vide">Aucune conversation.</p>'
-      : [...contacts].map(([id, nom]) =>
-          `<a href="?avec=${id}" class="${id === interlocuteurId ? 'actif' : ''}">${echapper(nom)}</a>`).join('');
-  }
-
-  async function chargerConversation() {
-    if (!interlocuteurId) return;
-    document.getElementById('form-message').hidden = false;
-    const messages = await api(`/messages/conversation?utilisateur1=${utilisateur.id}&utilisateur2=${interlocuteurId}`);
-    const nom = messages.length === 0 ? null
-      : (messages[0].expediteurId === interlocuteurId ? messages[0].expediteurNom : messages[0].destinataireNom);
-    document.getElementById('titre-conversation').textContent = nom ? 'Conversation avec ' + nom : 'Nouvelle conversation';
-    const fil = document.getElementById('fil');
-    fil.innerHTML = messages.length === 0
-      ? '<p class="vide">Écrivez votre premier message.</p>'
-      : messages.map(m => `
-          <div class="bulle ${m.expediteurId === utilisateur.id ? 'moi' : ''}">
-            ${echapper(m.contenu)}<small>${formaterDateHeure(m.dateEnvoi)}</small>
-          </div>`).join('');
-    fil.scrollTop = fil.scrollHeight;
-  }
-
-  document.getElementById('form-message').addEventListener('submit', async e => {
-    e.preventDefault();
+  async function chargerConversations() {
     try {
-      await api('/messages', {
-        method: 'POST',
-        body: {
-          expediteurId: utilisateur.id,
-          destinataireId: interlocuteurId,
-          contenu: document.getElementById('contenu').value
-        }
-      });
-      document.getElementById('contenu').value = '';
-      await chargerConversation();
-      await chargerContacts();
-    } catch (err) {
-      afficherAlerte(alerte, err.message);
+      const messages = await api('/messages/utilisateur/' + u.id);
+      const contacts = new Map(); // id -> dernier message
+      for (const m of messages) {
+        const autreId = m.expediteurId === u.id ? m.destinataireId : m.expediteurId;
+        if (!contacts.has(autreId)) contacts.set(autreId, m);
+      }
+      $('conversations').innerHTML = contacts.size === 0
+        ? etatVide('message', 'Aucune conversation', 'Écrivez à un conducteur depuis la page d\'un trajet.')
+        : [...contacts].map(([id, m]) => {
+            const nom = m.expediteurId === u.id ? m.destinataireNom : m.expediteurNom;
+            return `<a class="conversation ${id === interlocuteur ? 'actif' : ''}" href="?avec=${id}" data-id="${id}" data-nom="${echapper(nom)}">
+              ${avatar(nom)}
+              <div class="texte"><strong>${echapper(nom)}</strong><span>${m.expediteurId === u.id ? 'Vous : ' : ''}${echapper(m.contenu)}</span></div>
+              <time>${formaterMoment(m.dateEnvoi)}</time></a>`;
+          }).join('');
+      document.querySelectorAll('.conversation').forEach(a => a.addEventListener('click', e => {
+        e.preventDefault();
+        ouvrir(Number(a.dataset.id), a.dataset.nom);
+      }));
+    } catch (err) { $('conversations').innerHTML = etatVide('alerte', 'Les conversations n\'ont pas pu être chargées', echapper(err.message)); }
+  }
+
+  async function chargerFil(defiler) {
+    const messages = await api(`/messages/conversation?utilisateur1=${u.id}&utilisateur2=${interlocuteur}`);
+    if (!nomInterlocuteur && messages.length) {
+      const m = messages[0];
+      nomInterlocuteur = m.expediteurId === interlocuteur ? m.expediteurNom : m.destinataireNom;
     }
+    if (!nomInterlocuteur) {
+      try { const p = await api('/passagers/' + interlocuteur); nomInterlocuteur = p.prenom + ' ' + p.nom; } catch (e) { nomInterlocuteur = 'Conversation'; }
+    }
+    $('chat-nom').textContent = nomInterlocuteur;
+    $('chat-avatar').innerHTML = avatar(nomInterlocuteur);
+    const fil = $('fil');
+    const enBas = fil.scrollHeight - fil.scrollTop - fil.clientHeight < 80;
+    fil.innerHTML = messages.length === 0
+      ? '<div class="vide-chat"><strong>Nouvelle conversation</strong><br>Présentez-vous et précisez le point de rendez-vous.</div>'
+      : messages.map(m => `<div class="bulle ${m.expediteurId === u.id ? 'moi' : ''}">${echapper(m.contenu)}<time>${formaterMoment(m.dateEnvoi)}</time></div>`).join('');
+    if (defiler || enBas) fil.scrollTop = fil.scrollHeight;
+  }
+
+  async function ouvrir(id, nom) {
+    interlocuteur = id;
+    nomInterlocuteur = nom || '';
+    $('messagerie').classList.add('ouverte');
+    $('tete').hidden = false;
+    $('form-message').hidden = false;
+    document.querySelectorAll('.conversation').forEach(a => a.classList.toggle('actif', Number(a.dataset.id) === id));
+    history.replaceState(null, '', '?avec=' + id);
+    try { await chargerFil(true); } catch (err) { toast(err.message, 'erreur'); }
+    clearInterval(minuteur);
+    minuteur = setInterval(() => chargerFil(false).catch(() => {}), 5000); // nouveaux messages
+    $('contenu').focus();
+  }
+
+  $('fermer').onclick = () => {
+    clearInterval(minuteur);
+    interlocuteur = null;
+    history.replaceState(null, '', 'messages.html');
+    $('messagerie').classList.remove('ouverte');
+    chargerConversations();
+  };
+
+  $('form-message').addEventListener('submit', async e => {
+    e.preventDefault();
+    const contenu = $('contenu').value.trim();
+    if (!contenu) return;
+    try {
+      await api('/messages', { method: 'POST', body: { expediteurId: u.id, destinataireId: interlocuteur, contenu } });
+      $('contenu').value = '';
+      await chargerFil(true);
+      chargerConversations();
+    } catch (err) { toast(err.message, 'erreur'); }
   });
 
-  chargerContacts().then(chargerConversation).catch(err => afficherAlerte(alerte, err.message));
+  chargerConversations().then(() => { if (interlocuteur) ouvrir(interlocuteur); });
 </script>
 </body>
 </html>

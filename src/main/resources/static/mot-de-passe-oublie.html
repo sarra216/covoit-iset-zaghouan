@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
+  <title>Mot de passe oublié · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="conteneur">
+  <div class="etroit" style="max-width:460px;padding-top:40px">
+    <a class="retour" href="index.html"><span id="ic-retour"></span>Retour à la connexion</a>
+    <div class="bloc rembourre">
+      <form id="formulaire">
+        <h1 class="titre">Mot de passe oublié</h1>
+        <p class="chapeau">Saisissez l'email de votre compte : nous vous envoyons un lien pour choisir un nouveau mot de passe.</p>
+        <div class="champ"><label for="email">Email</label>
+          <div class="entree"><input id="email" type="email" required autocomplete="email" placeholder="prenom@iset.tn"></div></div>
+        <button class="btn plein grand" type="submit">Envoyer le lien</button>
+      </form>
+      <div id="envoye" hidden>
+        <h1 class="titre">Regardez vos emails</h1>
+        <p class="chapeau">Si un compte existe pour <strong id="adresse"></strong>, un lien vient d'être envoyé. Il est valable 1 heure.
+          Pensez à regarder dans les spams.</p>
+        <a class="btn plein" href="index.html">Retour à la connexion</a>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="js/api.js"></script>
+<script>
+  document.getElementById('ic-retour').innerHTML = ic('gauche');
+  document.getElementById('formulaire').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    try {
+      await api('/auth/mot-de-passe-oublie', { method: 'POST', body: { email } });
+      document.getElementById('adresse').textContent = email;
+      document.getElementById('formulaire').hidden = true;
+      document.getElementById('envoye').hidden = false;
+    } catch (err) { toast(err.message, 'erreur'); }
+  });
+</script>
+</body>
+</html>

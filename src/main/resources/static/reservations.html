@@ -2,50 +2,203 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mes réservations · Covoit ISET Zaghouan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
+  <title>Mes trajets · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<!-- User stories #4 : Réserver une place (liste)  et  #6 : Annuler une réservation -->
+<!-- User stories #4 (mes réservations), #6 (annuler), #8 (noter le conducteur), demandes à accepter / refuser -->
 <body>
-<main>
-  <h1>Mes réservations</h1>
-  <div id="alerte" hidden></div>
+<main class="conteneur">
+  <h1 class="titre">Mes trajets</h1>
+  <p class="chapeau" id="chapeau">Vos réservations à venir et passées.</p>
+  <div class="segments" id="segments" role="tablist">
+    <button data-onglet="reservations" class="actif" role="tab">Réservations</button>
+    <button data-onglet="demandes" role="tab">Demandes<span class="compte-onglet" id="nb-demandes" hidden></span></button>
+    <button data-onglet="proposes" role="tab">Trajets proposés</button>
+  </div>
   <div id="liste"></div>
 </main>
 
 <script src="js/api.js"></script>
 <script>
-  const utilisateur = exigerConnexion();
-  afficherNav('reservations');
-  const alerte = document.getElementById('alerte');
+  const u = exigerConnexion();
+  afficherNav('trajets');
+  const $ = id => document.getElementById(id);
+  const ONGLETS = ['reservations', 'demandes', 'proposes'];
+  let onglet = ONGLETS.includes(parametre('onglet')) ? parametre('onglet') : 'reservations';
+  const CHAPEAUX = {
+    reservations: 'Vos réservations à venir et passées.',
+    demandes: 'Les étudiants qui demandent une place dans vos trajets. Acceptez ou refusez chaque demande.',
+    proposes: 'Les trajets que vous avez publiés et leurs réservations.'
+  };
+  if (!estConducteur(u)) { $('segments').hidden = true; onglet = 'reservations'; }
+
+  document.querySelectorAll('[data-onglet]').forEach(b => b.addEventListener('click', () => {
+    onglet = b.dataset.onglet;
+    history.replaceState(null, '', '?onglet=' + onglet);
+    charger();
+  }));
 
   async function charger() {
+    document.querySelectorAll('[data-onglet]').forEach(b => b.classList.toggle('actif', b.dataset.onglet === onglet));
+    $('chapeau').textContent = CHAPEAUX[onglet];
+    $('liste').innerHTML = `<div class="bloc">${chargement(3)}</div>`;
     try {
-      const reservations = await api('/reservations/passager/' + utilisateur.id);
-      document.getElementById('liste').innerHTML = reservations.length === 0
-        ? '<p class="vide">Vous n\'avez encore aucune réservation. <a href="recherche.html">Chercher un trajet</a></p>'
-        : reservations.map(r => carteTrajet(r.trajet, `
-            <span class="badge ${r.statut === 'CONFIRMEE' ? 'confirmee' : 'annulee'}">
-              ${r.statut === 'CONFIRMEE' ? 'Confirmée' : 'Annulée'} · ${r.nombrePlaces} place(s)
-            </span>
-            ${r.statut === 'CONFIRMEE'
-              ? `<button class="bouton-danger" onclick="annuler(${r.id})">Annuler</button>` : ''}
-          `)).join('');
+      if (estConducteur(u)) compterDemandes();
+      if (onglet === 'reservations') afficherReservations(await api('/reservations/passager/' + u.id));
+      else if (onglet === 'demandes') afficherDemandes(await api(`/reservations/conducteur/${u.id}/demandes`));
+      else afficherProposes(await api('/trajets/conducteur/' + u.id));
     } catch (err) {
-      afficherAlerte(alerte, err.message);
+      $('liste').innerHTML = `<div class="bloc">${etatVide('alerte', 'Vos trajets n\'ont pas pu être chargés', echapper(err.message))}</div>`;
     }
   }
 
-  // Story #6
-  async function annuler(reservationId) {
-    try {
-      await api(`/reservations/${reservationId}/annulation?passagerId=${utilisateur.id}`, { method: 'PUT' });
-      afficherAlerte(alerte, 'Réservation annulée, la place a été libérée.', 'succes');
-      charger();
-    } catch (err) {
-      afficherAlerte(alerte, err.message);
+  function groupe(titre, html) {
+    return html ? `<h2 class="section">${titre}</h2><div class="bloc liste">${html}</div>` : '';
+  }
+
+  function afficherReservations(reservations) {
+    if (!reservations.length) {
+      $('liste').innerHTML = `<div class="bloc">${etatVide('billet', 'Aucune réservation',
+        'Cherchez un trajet vers l\'institut et réservez votre place.', '<a class="btn" href="recherche.html">Chercher un trajet</a>')}</div>`;
+      return;
     }
+    const active = r => r.statut === 'EN_ATTENTE' || r.statut === 'CONFIRMEE';
+    const aVenir = reservations.filter(r => active(r) && !estPasse(r.trajet));
+    const autres = reservations.filter(r => !aVenir.includes(r));
+    reservationsChargees = reservations;
+    const ligne = r => {
+      const etat = etatReservation(r);
+      let actions = '';
+      if (active(r) && !estPasse(r.trajet)) {
+        actions = `<a class="btn contour petit" href="messages.html?avec=${r.trajet.conducteurId}">${ic('message')} Écrire</a>
+           <button class="btn danger petit" onclick="annuler(${r.id}, ${r.statut === 'EN_ATTENTE'})">${r.statut === 'EN_ATTENTE' ? 'Retirer la demande' : 'Annuler'}</button>`;
+      } else if (r.statut === 'CONFIRMEE' && estPasse(r.trajet)) {
+        actions = r.avisDonne ? '<span class="etat ok">' + ic('ok') + 'Avis envoyé</span>'
+          : `<button class="btn jaune petit" onclick="noter(${r.id})">${ic('etoile')} Noter ${echapper(r.trajet.conducteurNom.split(' ')[0])}</button>`;
+      }
+      return ligneTrajet(r.trajet, `<div class="rangee" style="align-items:center">${etat}
+        <span style="color:var(--asphalte);font-size:14px">${r.nombrePlaces} place${r.nombrePlaces > 1 ? 's' : ''}</span>
+        <span style="flex:1"></span>${actions}</div>`, true);
+    };
+    $('liste').innerHTML = groupe('À venir', aVenir.map(ligne).join('')) + groupe('Historique', autres.map(ligne).join(''));
+  }
+
+  function afficherProposes(trajets) {
+    if (!trajets.length) {
+      $('liste').innerHTML = `<div class="bloc">${etatVide('voiture', 'Aucun trajet publié',
+        'Publiez votre prochain trajet vers l\'institut.', '<a class="btn" href="proposer.html">Proposer un trajet</a>')}</div>`;
+      return;
+    }
+    const aVenir = trajets.filter(t => !estPasse(t) && !t.annule).reverse();
+    const passes = trajets.filter(t => estPasse(t) || t.annule);
+    const ligne = t => {
+      const reservees = t.placesTotales - t.placesDisponibles;
+      return ligneTrajet(t, t.annule ? '<span class="etat rouge">Annulé</span>'
+        : `<span class="etat ${reservees ? 'bleu' : ''}">${reservees} sur ${t.placesTotales} réservée${reservees > 1 ? 's' : ''}</span>`, true);
+    };
+    $('liste').innerHTML = groupe('À venir', aVenir.map(ligne).join('')) + groupe('Historique', passes.map(ligne).join(''));
+  }
+
+  // ---------- Demandes reçues (conducteur) ----------
+  async function compterDemandes() {
+    try {
+      const n = (await api(`/reservations/conducteur/${u.id}/demandes`)).length;
+      $('nb-demandes').hidden = !n;
+      $('nb-demandes').textContent = n;
+    } catch (e) { /* rien */ }
+  }
+
+  let demandesChargees = [];
+  function afficherDemandes(demandes) {
+    demandesChargees = demandes;
+    if (!demandes.length) {
+      $('liste').innerHTML = `<div class="bloc">${etatVide('ok', 'Aucune demande en attente',
+        'Quand un étudiant demande une place dans un de vos trajets, elle apparaît ici et vous recevez une notification.')}</div>`;
+      return;
+    }
+    $('liste').innerHTML = `<div class="bloc liste">${demandes.map(d => ligneTrajet(d.trajet, `
+      <div class="demande" style="padding:12px 0 0">
+        ${avatar(d.passagerNom, 's')}
+        <a class="qui" href="profil-passager.html?id=${d.passagerId}"><strong>${echapper(d.passagerNom)}</strong>
+          <span>demande ${d.nombrePlaces} place${d.nombrePlaces > 1 ? 's' : ''} · ${formaterMoment(d.dateReservation)}</span></a>
+        <div class="actions">
+          <a class="btn-icone" href="messages.html?avec=${d.passagerId}" aria-label="Écrire à ${echapper(d.passagerNom)}">${ic('message')}</a>
+          <button class="btn danger petit" onclick="decider(${d.id}, false)">${ic('croix')} Refuser</button>
+          <button class="btn vert petit" onclick="decider(${d.id}, true)">${ic('ok')} Accepter</button>
+        </div>
+      </div>`, true)).join('')}</div>`;
+  }
+
+  async function decider(reservationId, accepter) {
+    const d = demandesChargees.find(x => x.id === reservationId);
+    if (!accepter && !(await confirmer('Refuser cette demande ?',
+      `${echapper(d ? d.passagerNom : 'Le passager')} sera prévenu et les places seront remises en ligne.`, 'Refuser', true))) return;
+    try {
+      await api(`/reservations/${reservationId}/${accepter ? 'acceptation' : 'refus'}?conducteurId=${u.id}`, { method: 'PUT' });
+      toast(accepter ? 'Demande acceptée. Le passager est prévenu.' : 'Demande refusée');
+      charger();
+    } catch (err) { toast(err.message, 'erreur'); }
+  }
+
+  // ---------- Story #8 : noter le conducteur ----------
+  let reservationsChargees = [];
+  const LIBELLES_NOTE = ['', 'Très décevant', 'Décevant', 'Correct', 'Bien', 'Excellent'];
+  function noter(reservationId) {
+    const r = reservationsChargees.find(x => x.id === reservationId);
+    let note = 0;
+    const { element, fermer } = ouvrirFenetre(`
+      <h3>Noter ${echapper(r.trajet.conducteurNom)}</h3>
+      <p class="chapeau">${echapper(ville(r.trajet.villeDepart))} → ${echapper(ville(r.trajet.villeArrivee))}, ${formaterDate(r.trajet.dateDepart)}</p>
+      <div class="choix-note" role="radiogroup" aria-label="Note sur 5">
+        ${[1, 2, 3, 4, 5].map(n => `<button type="button" role="radio" aria-checked="false" data-n="${n}" aria-label="${n} sur 5">${ic('etoile')}</button>`).join('')}
+      </div>
+      <div class="libelle-note" id="libelle-note">Choisissez une note</div>
+      <label class="etiquette" for="commentaire" style="margin-top:14px">Commentaire (facultatif)</label>
+      <textarea class="zone" id="commentaire" maxlength="500" placeholder="Ponctualité, conduite, ambiance…"></textarea>
+      <div class="rangee" style="justify-content:flex-end;margin-top:16px">
+        <button class="btn contour" data-r="non">Plus tard</button>
+        <button class="btn" data-r="oui" disabled>Envoyer l'avis</button>
+      </div>`);
+    const boutons = element.querySelectorAll('[data-n]');
+    const peindre = n => boutons.forEach(b => b.classList.toggle('pleine', +b.dataset.n <= n));
+    boutons.forEach(b => {
+      b.addEventListener('mouseenter', () => peindre(+b.dataset.n));
+      b.addEventListener('mouseleave', () => peindre(note));
+      b.addEventListener('click', () => {
+        note = +b.dataset.n;
+        boutons.forEach(x => x.setAttribute('aria-checked', String(+x.dataset.n === note)));
+        peindre(note);
+        element.querySelector('#libelle-note').textContent = LIBELLES_NOTE[note];
+        element.querySelector('[data-r="oui"]').disabled = false;
+      });
+    });
+    element.querySelector('[data-r="non"]').onclick = fermer;
+    element.querySelector('[data-r="oui"]').onclick = async () => {
+      try {
+        await api('/avis', { method: 'POST', body: {
+          reservationId: r.id, passagerId: u.id, note, commentaire: element.querySelector('#commentaire').value.trim() || null } });
+        fermer();
+        toast('Merci ! Votre avis a été envoyé.');
+        charger();
+      } catch (err) { toast(err.message, 'erreur'); }
+    };
+  }
+
+  // Story #6
+  async function annuler(reservationId, demande) {
+    const ok = demande
+      ? await confirmer('Retirer cette demande ?', 'Le conducteur ne la verra plus et les places seront libérées.', 'Retirer la demande', true)
+      : await confirmer('Annuler cette réservation ?', 'Votre place sera rendue au conducteur et pourra être réservée par un autre étudiant.', 'Annuler la réservation', true);
+    if (!ok) return;
+    try {
+      await api(`/reservations/${reservationId}/annulation?passagerId=${u.id}`, { method: 'PUT' });
+      toast(demande ? 'Demande retirée' : 'Réservation annulée');
+      charger();
+    } catch (err) { toast(err.message, 'erreur'); }
   }
 
   charger();

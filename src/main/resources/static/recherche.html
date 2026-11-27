@@ -2,83 +2,154 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chercher un trajet · Covoit ISET Zaghouan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
+  <title>Rechercher · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<!-- User story #3 : Chercher un trajet  (+ bouton Réserver de la story #4) -->
+<!-- User story #3 : Chercher un trajet (accueil) -->
 <body>
-<main>
-  <h1>Chercher un trajet</h1>
-
-  <form id="form-recherche" class="carte">
-    <div class="ligne">
-      <div class="champ"><label for="depart">Départ</label><input id="depart" placeholder="Tunis"></div>
-      <div class="champ"><label for="arrivee">Arrivée</label><input id="arrivee" placeholder="Zaghouan"></div>
-      <div class="champ"><label for="date">Date</label><input id="date" type="date"></div>
+<main class="conteneur">
+  <section class="panneau-direction">
+    <div class="direction">
+      <h1 id="titre-panneau">ISET Zaghouan</h1>
+      <span class="fleche-route" id="fleche"></span>
     </div>
-    <button type="submit">Rechercher</button>
-  </form>
+    <p id="salut">Où allez-vous ?</p>
+    <form class="recherche" id="form-recherche">
+      <div class="case-champ depart"><label for="depart">Départ</label><input id="depart" list="villes" placeholder="Tunis" autocomplete="off"></div>
+      <button type="button" class="echanger" id="echanger" aria-label="Inverser départ et arrivée"></button>
+      <div class="case-champ arrivee"><label for="arrivee">Arrivée</label><input id="arrivee" list="villes" placeholder="ISET Zaghouan" autocomplete="off"></div>
+      <div class="case-champ quand"><label for="date">Date</label><input id="date" type="date"></div>
+      <div class="case-champ quand"><label for="heure">Après</label><input id="heure" type="time"></div>
+      <button class="btn" id="btn-rechercher" type="submit" disabled></button>
+    </form>
+  </section>
 
-  <div id="alerte" hidden></div>
-  <div id="resultats"></div>
+  <div class="colonnes" style="margin-top:28px">
+    <section>
+      <h2 class="section" id="titre-liste">Prochains départs</h2>
+      <div class="bloc liste" id="liste"><div class="chargement"></div><div class="chargement"></div><div class="chargement"></div></div>
+    </section>
+
+    <aside>
+      <h2 class="section">Itinéraires fréquents</h2>
+      <div class="bloc liste" id="frequents"><div class="chargement"></div></div>
+      <div class="proposer-encart">
+        <strong>Vous avez des places libres ?</strong>
+        <p>Publiez votre trajet vers l'institut et partagez les frais d'essence.</p>
+        <a class="btn" id="encart-proposer" href="proposer.html"></a>
+      </div>
+    </aside>
+  </div>
 </main>
 
 <script src="js/api.js"></script>
 <script>
-  const utilisateur = exigerConnexion();
+  const u = exigerConnexion();
   afficherNav('recherche');
-  const alerte = document.getElementById('alerte');
-  const resultats = document.getElementById('resultats');
+  ajouterListeVilles();
+  const $ = id => document.getElementById(id);
+  $('fleche').innerHTML = ic('fleche').replace('<path d="M5 12h14"/>', '<path d="M5 12h14"/>');
+  $('echanger').innerHTML = ic('echanger');
+  $('btn-rechercher').innerHTML = ic('recherche') + 'Rechercher';
+  $('encart-proposer').innerHTML = ic('plus') + 'Proposer un trajet';
+  $('salut').textContent = `Bonjour ${u.prenom}, où allez-vous ?`;
+  $('date').min = dateDuJour();
+
+  // Le panneau affiche la destination tapée (ISET Zaghouan par défaut)
+  const champs = ['depart', 'arrivee', 'date', 'heure'];
+  const majBouton = () => {
+    $('btn-rechercher').disabled = !champs.some(id => $(id).value.trim());
+    $('titre-panneau').textContent = ville($('arrivee').value.trim()) || 'ISET Zaghouan';
+  };
+  champs.forEach(id => $(id).addEventListener('input', majBouton));
+  $('echanger').addEventListener('click', () => {
+    [$('depart').value, $('arrivee').value] = [$('arrivee').value, $('depart').value];
+    majBouton();
+  });
+
+  $('encart-proposer').addEventListener('click', e => {
+    if (!estConducteur(u) || !aVehicule(u)) { e.preventDefault(); location.href = 'completer-profil.html?suite=proposer'; }
+  });
+
+  function afficherListe(trajets, titre, vide) {
+    $('titre-liste').textContent = titre;
+    if (!trajets.length) { $('liste').innerHTML = vide; return; }
+    let html = '', jour = '';
+    for (const t of trajets) {
+      if (t.dateDepart !== jour) { jour = t.dateDepart; html += `<div class="jour">${formaterDate(jour)}</div>`; }
+      html += ligneTrajet(t);
+    }
+    $('liste').innerHTML = html;
+  }
 
   async function rechercher() {
     const params = new URLSearchParams();
-    for (const champ of ['depart', 'arrivee', 'date']) {
-      const valeur = document.getElementById(champ).value.trim();
-      if (valeur) params.append(champ, valeur);
-    }
+    if ($('depart').value.trim()) params.append('depart', $('depart').value.trim());
+    if ($('arrivee').value.trim()) params.append('arrivee', $('arrivee').value.trim());
+    if ($('date').value) params.append('date', $('date').value);
+    $('liste').innerHTML = chargement(3);
     try {
-      const trajets = await api('/trajets/recherche?' + params);
-      resultats.innerHTML = `<h2>${trajets.length} trajet(s) trouvé(s)</h2>` +
-        (trajets.length === 0
-          ? '<p class="vide">Aucun trajet ne correspond à votre recherche.</p>'
-          : trajets.map(t => carteTrajet(t, boutonReserver(t))).join(''));
+      let trajets = await api('/trajets/recherche?' + params);
+      const heure = $('heure').value;
+      if (heure) trajets = trajets.filter(t => formaterHeure(t.heureDepart) >= heure);
+      const n = trajets.length;
+      afficherListe(trajets, n ? `${n} trajet${n > 1 ? 's' : ''} trouvé${n > 1 ? 's' : ''}` : 'Résultats',
+        etatVide('route', 'Aucun trajet ne correspond', 'Essayez une autre date, ou retirez l\'heure.',
+          '<button class="btn contour" onclick="reinitialiser()">Voir tous les départs</button>'));
     } catch (err) {
-      afficherAlerte(alerte, err.message);
+      $('liste').innerHTML = etatVide('alerte', 'La recherche n\'a pas abouti', echapper(err.message));
     }
   }
 
-  // Story #4 : un passager ne peut pas réserver son propre trajet
-  function boutonReserver(t) {
-    if (t.conducteurId === utilisateur.id) return '<span class="badge annulee">Mon trajet</span>';
-    return `<input type="number" id="places-${t.id}" min="1" max="${t.placesDisponibles}" value="1">
-            <button onclick="reserver(${t.id})">Réserver</button>`;
+  async function chargerProchains() {
+    $('liste').innerHTML = chargement(3);
+    try {
+      afficherListe((await api('/trajets/recherche')).slice(0, 8), 'Prochains départs',
+        etatVide('voiture', 'Aucun trajet pour le moment', 'Les trajets publiés par les étudiants apparaîtront ici.'));
+    } catch (err) {
+      $('liste').innerHTML = etatVide('alerte', 'Les trajets n\'ont pas pu être chargés', echapper(err.message));
+    }
   }
 
-  async function reserver(trajetId) {
-    try {
-      await api('/reservations', {
-        method: 'POST',
-        body: {
-          trajetId: trajetId,
-          passagerId: utilisateur.id,
-          nombrePlaces: Number(document.getElementById('places-' + trajetId).value)
-        }
-      });
-      afficherAlerte(alerte, 'Réservation confirmée ! Retrouvez-la dans « Mes réservations ».', 'succes');
+  function reinitialiser() {
+    champs.forEach(id => $(id).value = '');
+    majBouton();
+    chargerProchains();
+  }
+
+  $('form-recherche').addEventListener('submit', e => { e.preventDefault(); rechercher(); });
+
+  // Itinéraires fréquents : les plus proposés, avec les deux trajets de l'ISET toujours visibles
+  async function chargerFrequents() {
+    let routes = [];
+    try { routes = await api('/trajets/populaires'); } catch (e) { /* liste par défaut */ }
+    const cle = (a, b) => (a + '>' + b).toLowerCase().trim();
+    const connues = new Set(routes.map(r => cle(r.villeDepart, r.villeArrivee)));
+    [['Tunis', 'ISET Zaghouan'], ['ISET Zaghouan', 'Tunis']].forEach(([a, b]) => {
+      if (!connues.has(cle(a, b))) routes.push({ villeDepart: a, villeArrivee: b, nombreTrajets: 0 });
+    });
+    $('frequents').innerHTML = routes.slice(0, 5).map(r => {
+      const n = r.nombreTrajets;
+      return `<button class="frequent" ${n ? '' : 'disabled'} data-a="${echapper(r.villeDepart)}" data-b="${echapper(r.villeArrivee)}">
+        <span class="texte"><strong>${echapper(ville(r.villeDepart))} → ${echapper(ville(r.villeArrivee))}</strong>
+        <span>${n ? `${n} trajet${n > 1 ? 's' : ''}, dès ${formaterPrix(r.prixMin)}` : 'Aucun trajet pour le moment'}</span></span>
+        ${n ? ic('droite') : ''}</button>`;
+    }).join('');
+    document.querySelectorAll('.frequent:not(:disabled)').forEach(b => b.addEventListener('click', () => {
+      $('depart').value = b.dataset.a;
+      $('arrivee').value = b.dataset.b;
+      majBouton();
       rechercher();
-    } catch (err) {
-      afficherAlerte(alerte, err.message);
-    }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }));
   }
 
-  document.getElementById('form-recherche').addEventListener('submit', e => {
-    e.preventDefault();
-    alerte.hidden = true;
-    rechercher();
-  });
-
-  rechercher(); // affiche tous les trajets à venir au chargement
+  chargerProchains();
+  chargerFrequents();
 </script>
 </body>
 </html>

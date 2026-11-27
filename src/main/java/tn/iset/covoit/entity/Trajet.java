@@ -36,6 +36,14 @@ public class Trajet {
     @Column(name = "places_disponibles", nullable = false)
     private int placesDisponibles;
 
+    /** Point de rendez-vous précis, choisi sur la carte (facultatif). */
+    @Column(name = "lieu_depart", length = 200)
+    private String lieuDepart;
+
+    private Double latitude;
+
+    private Double longitude;
+
     /** Prix par place, en dinars. */
     @Column(nullable = false)
     private double prix;
@@ -43,9 +51,15 @@ public class Trajet {
     @Column(name = "date_creation", nullable = false)
     private LocalDateTime dateCreation = LocalDateTime.now();
 
+    /** Trajet annulé par son conducteur (null = non annulé, pour les anciennes lignes). */
+    private Boolean annule;
+
     /** Verrou optimiste : empêche deux réservations simultanées de la même place. */
     @Version
     private Long version;
+
+    public boolean isAnnule() { return Boolean.TRUE.equals(annule); }
+    public void setAnnule(boolean annule) { this.annule = annule; }
 
     public boolean estPasse() {
         LocalDateTime depart = LocalDateTime.of(dateDepart, heureDepart);
@@ -75,6 +89,15 @@ public class Trajet {
 
     public int getPlacesDisponibles() { return placesDisponibles; }
     public void setPlacesDisponibles(int placesDisponibles) { this.placesDisponibles = placesDisponibles; }
+
+    public String getLieuDepart() { return lieuDepart; }
+    public void setLieuDepart(String lieuDepart) { this.lieuDepart = lieuDepart; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 
     public double getPrix() { return prix; }
     public void setPrix(double prix) { this.prix = prix; }

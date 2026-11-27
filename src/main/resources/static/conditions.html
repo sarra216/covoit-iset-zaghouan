@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
+  <title>Conditions d'utilisation · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="conteneur">
+  <div id="retour-public"></div>
+  <article class="page-texte">
+    <h1 class="titre">Conditions d'utilisation</h1>
+    <p class="chapeau">Dernière mise à jour : novembre 2026. En créant un compte, vous acceptez ces conditions.</p>
+
+    <h2>1. À quoi sert Covoit ISET Zaghouan</h2>
+    <p>Covoit ISET Zaghouan met en relation les étudiants et le personnel de l'ISET Zaghouan qui font le même trajet,
+      pour partager une voiture et ses frais. Le service est gratuit.</p>
+
+    <h2>2. Partage de frais, pas de transport payant</h2>
+    <p>Le prix d'une place sert uniquement à partager les frais du trajet (carburant, péage). Le conducteur ne doit pas
+      en tirer de bénéfice ni utiliser l'application pour une activité de transport professionnelle.
+      Le paiement se fait directement entre le passager et le conducteur : l'application ne prend aucun paiement.</p>
+
+    <h2>3. Votre compte</h2>
+    <ul>
+      <li>Les informations de votre profil doivent être exactes ; un seul compte par personne.</li>
+      <li>Votre mot de passe est personnel. Prévenez l'administration si vous pensez qu'il a été utilisé par quelqu'un d'autre.</li>
+      <li>Vous pouvez supprimer votre compte à tout moment depuis votre profil.</li>
+    </ul>
+
+    <h2>4. Si vous conduisez</h2>
+    <ul>
+      <li>Vous avez un permis de conduire valide, et votre véhicule est assuré, en règle et en bon état.</li>
+      <li>Vous respectez le code de la route et ne prenez pas plus de passagers que de places annoncées.</li>
+      <li>Vous répondez aux demandes de réservation. Sans réponse sous 12 heures (ou 2 heures avant le départ), une demande expire.</li>
+      <li>Si vous ne pouvez plus faire le trajet, annulez-le dans l'application le plus tôt possible : les passagers sont prévenus.</li>
+    </ul>
+
+    <h2>5. Si vous êtes passager</h2>
+    <ul>
+      <li>Soyez à l'heure au point de rendez-vous et réglez la participation convenue.</li>
+      <li>Si vous ne pouvez pas venir, annulez votre réservation dans l'application pour libérer la place.</li>
+    </ul>
+
+    <h2>6. Respect et sécurité</h2>
+    <p>Le respect est obligatoire : insultes, harcèlement, discrimination, menaces ou comportement dangereux sont interdits.
+      Vous pouvez <strong>signaler</strong> ou <strong>bloquer</strong> un utilisateur depuis son profil.
+      L'administration examine les signalements et peut suspendre un compte.
+      En cas de danger immédiat, appelez la police (197) ou la Protection civile (198).</p>
+
+    <h2>7. Avis</h2>
+    <p>Après un trajet, vous pouvez noter le conducteur. Les avis doivent être honnêtes et respectueux.</p>
+
+    <h2>8. Responsabilité</h2>
+    <p>L'application est un outil de mise en relation. Le trajet est organisé entre les utilisateurs eux-mêmes :
+      ni l'ISET Zaghouan ni l'équipe du projet ne sont parties au trajet, et ils ne peuvent pas être tenus responsables
+      d'un retard, d'une annulation, d'un accident ou d'un litige entre utilisateurs.</p>
+
+    <h2>9. Modifications</h2>
+    <p>Ces conditions peuvent évoluer. En cas de changement important, les utilisateurs en seront informés dans l'application.</p>
+
+    <h2>Contact</h2>
+    <p>Pour toute question : <span class="a-completer">[adresse email de contact de l'ISET ou de l'équipe]</span>.</p>
+  </article>
+</main>
+
+<script src="js/api.js"></script>
+<script>
+  // Page publique : barre de navigation si l'on est connecté, sinon simple lien de retour
+  if (utilisateurConnecte()) afficherNav('profil');
+  else document.getElementById('retour-public').innerHTML = `<a class="retour" href="index.html">${ic('gauche')}Retour à l'accueil</a>`;
+</script>
+</body>
+</html>

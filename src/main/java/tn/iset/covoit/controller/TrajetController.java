@@ -4,8 +4,10 @@ import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import tn.iset.covoit.dto.RoutePopulaire;
 import tn.iset.covoit.dto.TrajetRequest;
 import tn.iset.covoit.dto.TrajetResponse;
+import tn.iset.covoit.security.UtilisateurCourant;
 import tn.iset.covoit.service.TrajetService;
 
 import java.time.LocalDate;
@@ -17,14 +19,17 @@ import java.util.List;
 public class TrajetController {
 
     private final TrajetService trajetService;
+    private final UtilisateurCourant courant;
 
-    public TrajetController(TrajetService trajetService) {
+    public TrajetController(TrajetService trajetService, UtilisateurCourant courant) {
+        this.courant = courant;
         this.trajetService = trajetService;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TrajetResponse proposer(@Valid @RequestBody TrajetRequest requete) {
+        courant.verifier(requete.conducteurId());
         return trajetService.proposer(requete);
     }
 
@@ -34,5 +39,15 @@ public class TrajetController {
             @RequestParam(required = false) String arrivee,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return trajetService.rechercher(depart, arrivee, date);
+    }
+
+    @GetMapping("/populaires")
+    public List<RoutePopulaire> routesPopulaires() {
+        return trajetService.routesPopulaires();
+    }
+
+    @GetMapping("/{id}")
+    public TrajetResponse detail(@PathVariable Long id) {
+        return trajetService.detail(id);
     }
 }

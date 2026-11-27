@@ -34,7 +34,7 @@ public class ConducteurService {
         List<TrajetResponse> trajetsAVenir = trajetRepository
                 .findByConducteurIdAndDateDepartGreaterThanEqualOrderByDateDepartAscHeureDepartAsc(id, LocalDate.now())
                 .stream()
-                .filter(t -> !t.estPasse())
+                .filter(t -> !t.estPasse() && !t.isAnnule())
                 .map(TrajetResponse::from)
                 .toList();
 
@@ -44,6 +44,10 @@ public class ConducteurService {
                 conducteur.getPrenom(),
                 conducteur.getDateInscription().toLocalDate(),
                 trajetRepository.countByConducteurId(id),
+                conducteur.getVoitureModele(),
+                conducteur.getVoitureCouleur(),
+                conducteur.getNoteMoyenne(),
+                conducteur.getNombreAvis(),
                 trajetsAVenir);
     }
 }

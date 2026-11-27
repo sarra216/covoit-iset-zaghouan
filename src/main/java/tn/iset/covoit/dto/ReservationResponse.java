@@ -12,11 +12,16 @@ public record ReservationResponse(
         String passagerNom,
         int nombrePlaces,
         StatutReservation statut,
-        LocalDateTime dateReservation
+        LocalDateTime dateReservation,
+        boolean avisDonne
 ) {
 
     public static ReservationResponse from(Reservation r) {
+        return from(r, false);
+    }
+
+    public static ReservationResponse from(Reservation r, boolean avisDonne) {
         return new ReservationResponse(r.getId(), TrajetResponse.from(r.getTrajet()), r.getPassager().getId(),
-                r.getPassager().getNomComplet(), r.getNombrePlaces(), r.getStatut(), r.getDateReservation());
+                r.getPassager().getNomComplet(), r.getNombrePlaces(), r.getStatut(), r.getDateReservation(), avisDonne);
     }
 }

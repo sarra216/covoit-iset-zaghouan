@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
+  <title>Nouveau mot de passe · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="conteneur">
+  <div class="etroit" style="max-width:460px;padding-top:40px">
+    <div class="bloc rembourre">
+      <form id="formulaire">
+        <h1 class="titre">Nouveau mot de passe</h1>
+        <p class="chapeau">Choisissez un mot de passe d'au moins 6 caractères.</p>
+        <div class="champ"><label for="mdp">Nouveau mot de passe</label>
+          <div class="entree"><input id="mdp" type="password" minlength="6" required autocomplete="new-password"></div></div>
+        <div class="champ"><label for="mdp2">Confirmez-le</label>
+          <div class="entree"><input id="mdp2" type="password" minlength="6" required autocomplete="new-password"></div></div>
+        <button class="btn plein grand" type="submit">Enregistrer</button>
+      </form>
+    </div>
+  </div>
+</main>
+<script src="js/api.js"></script>
+<script>
+  const jeton = parametre('jeton');
+  if (!jeton) {
+    document.querySelector('.bloc').innerHTML = etatVide('alerte', 'Lien incomplet',
+      'Ouvrez le lien reçu par email en entier, ou demandez-en un nouveau.', '<a class="btn" href="mot-de-passe-oublie.html">Demander un lien</a>');
+  }
+  document.getElementById('formulaire')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const mdp = document.getElementById('mdp').value;
+    if (mdp !== document.getElementById('mdp2').value) return toast('Les deux mots de passe sont différents', 'erreur');
+    try {
+      await api('/auth/reinitialisation', { method: 'POST', body: { jeton, motDePasse: mdp } });
+      oublierSession();
+      document.querySelector('.bloc').innerHTML = etatVide('ok', 'Mot de passe modifié',
+        'Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.', '<a class="btn" href="index.html">Se connecter</a>');
+    } catch (err) { toast(err.message, 'erreur'); }
+  });
+</script>
+</body>
+</html>

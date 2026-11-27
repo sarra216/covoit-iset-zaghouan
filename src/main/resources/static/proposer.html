@@ -2,63 +2,136 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e4b8f">
   <title>Proposer un trajet · Covoit ISET Zaghouan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <!-- User story #26 : Proposer un trajet -->
 <body>
-<main>
-  <h1>Proposer un trajet</h1>
-  <div id="alerte" hidden></div>
+<main class="conteneur">
+  <div id="retour"></div>
+  <h1 class="titre">Proposer un trajet</h1>
+  <p class="chapeau">Les étudiants verront votre trajet dans la recherche et pourront réserver vos places.</p>
+  <div id="alerte-vehicule"></div>
 
-  <form id="form-trajet" class="carte">
-    <div class="ligne">
-      <div class="champ"><label for="depart">Ville de départ</label><input id="depart" placeholder="Tunis" required></div>
-      <div class="champ"><label for="arrivee">Ville d'arrivée</label><input id="arrivee" placeholder="ISET Zaghouan" required></div>
-    </div>
-    <div class="ligne">
-      <div class="champ"><label for="date">Date</label><input id="date" type="date" required></div>
-      <div class="champ"><label for="heure">Heure</label><input id="heure" type="time" required></div>
-      <div class="champ"><label for="places">Places</label><input id="places" type="number" min="1" max="8" value="3" required></div>
-      <div class="champ"><label for="prix">Prix par place (DT)</label><input id="prix" type="number" min="0" step="0.5" value="5" required></div>
-    </div>
-    <button type="submit">Publier le trajet</button>
+  <form id="form-trajet" class="colonnes">
+    <section>
+      <div class="bloc rembourre">
+        <h2 class="bloc-titre">Itinéraire</h2>
+        <div class="deux empile">
+          <div class="champ"><label for="depart">Départ</label><div class="entree"><input id="depart" list="villes" placeholder="Tunis" required autocomplete="off"></div></div>
+          <div class="champ"><label for="arrivee">Arrivée</label><div class="entree"><input id="arrivee" list="villes" placeholder="ISET Zaghouan" required autocomplete="off"></div></div>
+        </div>
+        <label class="etiquette">Point de rendez-vous <span style="font-weight:500;color:var(--asphalte)">(facultatif)</span></label>
+        <button type="button" class="btn contour plein" id="choisir-lieu" style="justify-content:flex-start"></button>
+        <div class="carte-geo" id="apercu" style="margin-top:12px;height:200px" hidden></div>
+      </div>
+
+      <div class="bloc rembourre">
+        <h2 class="bloc-titre">Date et heure</h2>
+        <div class="deux">
+          <div class="champ" style="margin:0"><label for="date">Date</label><div class="entree"><input id="date" type="date" required></div></div>
+          <div class="champ" style="margin:0"><label for="heure">Heure de départ</label><div class="entree"><input id="heure" type="time" value="07:30" required></div></div>
+        </div>
+      </div>
+
+      <div class="bloc rembourre">
+        <h2 class="bloc-titre">Places et prix</h2>
+        <div class="deux">
+          <div><label class="etiquette">Places libres</label>
+            <div class="compteur"><button type="button" id="p-moins" aria-label="Une place de moins"></button><output id="places" aria-live="polite">3</output><button type="button" id="p-plus" aria-label="Une place de plus"></button></div></div>
+          <div><label class="etiquette">Prix par place</label>
+            <div class="compteur"><button type="button" id="x-moins" aria-label="Baisser le prix"></button><output id="prix" aria-live="polite">5 DT</output><button type="button" id="x-plus" aria-label="Augmenter le prix"></button></div></div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="colle">
+      <div class="bloc rembourre">
+        <h2 class="bloc-titre">Récapitulatif</h2>
+        <div id="recap"></div>
+        <div class="action-mobile"><button class="btn plein grand" type="submit" id="publier">Publier le trajet</button></div>
+      </div>
+    </aside>
   </form>
 </main>
 
+<script src="vendor/leaflet/leaflet.js"></script>
 <script src="js/api.js"></script>
 <script>
-  const utilisateur = exigerConnexion();
-  afficherNav('proposer');
-  const alerte = document.getElementById('alerte');
-  document.getElementById('date').min = new Date().toISOString().slice(0, 10);
+  const u = exigerConnexion();
+  afficherNav('trajets');
+  ajouterListeVilles();
+  const $ = id => document.getElementById(id);
+  $('retour').innerHTML = lienRetour('Retour', 'reservations.html?onglet=proposes');
+  $('p-moins').innerHTML = $('x-moins').innerHTML = ic('moins');
+  $('p-plus').innerHTML = $('x-plus').innerHTML = ic('plus');
+  $('choisir-lieu').innerHTML = ic('epingle') + '<span id="lieu-texte">Choisir sur la carte</span>';
+  $('date').min = $('date').value = dateDuJour();
 
-  if (utilisateur && utilisateur.role !== 'CONDUCTEUR') {
-    document.getElementById('form-trajet').hidden = true;
-    afficherAlerte(alerte, 'Seuls les conducteurs peuvent proposer un trajet.');
+  // Il faut être conducteur avec un véhicule enregistré
+  if (!(estConducteur(u) && aVehicule(u))) {
+    $('alerte-vehicule').innerHTML = `
+      <div class="alerte">${ic('alerte')}<div><strong>Enregistrez d'abord votre voiture</strong>
+        Le modèle, la couleur et la matricule aident les passagers à vous trouver le jour du trajet.
+        <div style="margin-top:10px"><a class="btn petit" href="completer-profil.html?suite=proposer">Compléter mon profil</a></div></div></div>`;
+    $('publier').disabled = true;
   }
 
-  document.getElementById('form-trajet').addEventListener('submit', async e => {
+  let places = 3, prix = 5, lieu = null;
+  function maj() {
+    $('places').textContent = places;
+    $('prix').textContent = formaterPrix(prix);
+    $('p-moins').disabled = places <= 1; $('p-plus').disabled = places >= 8;
+    $('x-moins').disabled = prix <= 0;
+    const de = ville($('depart').value) || '—', a = ville($('arrivee').value) || '—';
+    $('recap').innerHTML = `
+      <div class="donnee" style="border-top:none;padding-top:0"><span>Trajet</span><strong>${echapper(de)} → ${echapper(a)}</strong></div>
+      <div class="donnee"><span>Départ</span><strong>${$('date').value ? formaterDate($('date').value) : '—'} à ${$('heure').value || '—'}</strong></div>
+      <div class="donnee"><span>Rendez-vous</span><strong>${lieu ? echapper(lieu.lieu) : 'À convenir'}</strong></div>
+      <div class="donnee"><span>Places</span><strong>${places}</strong></div>
+      <div class="donnee"><span>Si tout est réservé</span><strong>${formaterPrix(places * prix)}</strong></div>`;
+  }
+  $('p-moins').onclick = () => { places--; maj(); };
+  $('p-plus').onclick = () => { places++; maj(); };
+  $('x-moins').onclick = () => { prix = Math.max(0, prix - 0.5); maj(); };
+  $('x-plus').onclick = () => { prix += 0.5; maj(); };
+  ['depart', 'arrivee', 'date', 'heure'].forEach(id => $(id).addEventListener('input', maj));
+  maj();
+
+  // Point de rendez-vous sur la carte
+  let apercu;
+  $('choisir-lieu').onclick = async () => {
+    const choix = await choisirLieuSurCarte(lieu);
+    if (!choix) return;
+    lieu = choix;
+    $('lieu-texte').textContent = choix.lieu;
+    $('apercu').hidden = false;
+    if (!apercu) apercu = creerCarte('apercu', [choix.latitude, choix.longitude], 16, { dragging: false, scrollWheelZoom: false, zoomControl: false });
+    apercu.setView([choix.latitude, choix.longitude], 16);
+    apercu.eachLayer(c => { if (c instanceof L.CircleMarker) apercu.removeLayer(c); });
+    marqueur(apercu, [choix.latitude, choix.longitude]);
+    maj();
+  };
+
+  $('form-trajet').addEventListener('submit', async e => {
     e.preventDefault();
     try {
-      const trajet = await api('/trajets', {
-        method: 'POST',
-        body: {
-          conducteurId: utilisateur.id,
-          villeDepart: document.getElementById('depart').value,
-          villeArrivee: document.getElementById('arrivee').value,
-          dateDepart: document.getElementById('date').value,
-          heureDepart: document.getElementById('heure').value,
-          places: Number(document.getElementById('places').value),
-          prix: Number(document.getElementById('prix').value)
-        }
-      });
-      afficherAlerte(alerte, `Trajet ${trajet.villeDepart} → ${trajet.villeArrivee} publié !`, 'succes');
-      e.target.reset();
-    } catch (err) {
-      afficherAlerte(alerte, err.message);
-    }
+      await api('/trajets', { method: 'POST', body: {
+        conducteurId: u.id,
+        villeDepart: $('depart').value, villeArrivee: $('arrivee').value,
+        dateDepart: $('date').value, heureDepart: $('heure').value,
+        places, prix,
+        lieuDepart: lieu ? lieu.lieu : null,
+        latitude: lieu ? lieu.latitude : null,
+        longitude: lieu ? lieu.longitude : null } });
+      toast('Trajet publié');
+      setTimeout(() => location.href = 'reservations.html?onglet=proposes', 700);
+    } catch (err) { toast(err.message, 'erreur'); }
   });
 </script>
 </body>
